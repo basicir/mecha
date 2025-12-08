@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import type { TaskConfig, ConfigData } from '@/types';
+import type { TaskConfig, ConfigData, TaskVariable } from '@/types';
 
 export default function AdminPage() {
     const [config, setConfig] = useState<ConfigData | null>(null);
@@ -35,7 +35,6 @@ export default function AdminPage() {
 
             if (res.ok) {
                 setMessage(`Refreshed! Found ${data.taskCount} tasks from HTML examples.`);
-                // Reload the config
                 await loadConfig();
             } else {
                 setMessage('Failed to refresh from examples');
@@ -81,20 +80,55 @@ export default function AdminPage() {
         });
     };
 
-    const updateEquation = (taskId: string, eqIndex: number, field: 'outputVariable' | 'formula', value: string) => {
+    // Input Variable management
+    const addInputVariable = (taskId: string) => {
         if (!config) return;
 
         setConfig({
             ...config,
             tasks: config.tasks.map((task) => {
                 if (task.id !== taskId) return task;
-                const newEquations = [...task.equations];
-                newEquations[eqIndex] = { ...newEquations[eqIndex], [field]: value };
-                return { ...task, equations: newEquations };
+                return {
+                    ...task,
+                    inputVariables: [
+                        ...task.inputVariables,
+                        { name: '', label: '', unit: '' },
+                    ],
+                };
             }),
         });
     };
 
+    const updateInputVariable = (taskId: string, varIndex: number, field: keyof TaskVariable, value: string) => {
+        if (!config) return;
+
+        setConfig({
+            ...config,
+            tasks: config.tasks.map((task) => {
+                if (task.id !== taskId) return task;
+                const newVars = [...task.inputVariables];
+                newVars[varIndex] = { ...newVars[varIndex], [field]: value };
+                return { ...task, inputVariables: newVars };
+            }),
+        });
+    };
+
+    const removeInputVariable = (taskId: string, varIndex: number) => {
+        if (!config) return;
+
+        setConfig({
+            ...config,
+            tasks: config.tasks.map((task) => {
+                if (task.id !== taskId) return task;
+                return {
+                    ...task,
+                    inputVariables: task.inputVariables.filter((_, i) => i !== varIndex),
+                };
+            }),
+        });
+    };
+
+    // Equation management
     const addEquation = (taskId: string) => {
         if (!config) return;
 
@@ -106,6 +140,20 @@ export default function AdminPage() {
                     ...task,
                     equations: [...task.equations, { outputVariable: '', formula: '' }],
                 };
+            }),
+        });
+    };
+
+    const updateEquation = (taskId: string, eqIndex: number, field: 'outputVariable' | 'formula', value: string) => {
+        if (!config) return;
+
+        setConfig({
+            ...config,
+            tasks: config.tasks.map((task) => {
+                if (task.id !== taskId) return task;
+                const newEquations = [...task.equations];
+                newEquations[eqIndex] = { ...newEquations[eqIndex], [field]: value };
+                return { ...task, equations: newEquations };
             }),
         });
     };
@@ -125,6 +173,38 @@ export default function AdminPage() {
         });
     };
 
+    // Task management
+    const addTask = () => {
+        if (!config) return;
+
+        const newId = `task-${Date.now()}`;
+        setConfig({
+            ...config,
+            tasks: [
+                ...config.tasks,
+                {
+                    id: newId,
+                    name: 'New Task',
+                    inputVariables: [],
+                    outputVariables: [],
+                    equations: [],
+                    showingText: '',
+                    outputPlaceholders: [],
+                    images: [],
+                },
+            ],
+        });
+    };
+
+    const removeTask = (taskId: string) => {
+        if (!config) return;
+
+        setConfig({
+            ...config,
+            tasks: config.tasks.filter((t) => t.id !== taskId),
+        });
+    };
+
     if (loading) {
         return (
             <main className="container" style={{ paddingTop: '2rem' }}>
@@ -139,7 +219,7 @@ export default function AdminPage() {
                 <h1 style={{ fontSize: '1.75rem', fontWeight: '700' }}>
                     ⚙️ Admin Configuration
                 </h1>
-                <div style={{ display: 'flex', gap: '1rem' }}>
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                     <button
                         onClick={handleRefresh}
                         className="btn"
@@ -170,44 +250,33 @@ export default function AdminPage() {
                 </div>
             )}
 
-            <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                    💡 <strong>Dynamic Loading:</strong> Tasks are automatically parsed from HTML files in the <code>examples/</code> folder.
-                    Click &quot;Reload from HTML&quot; to refresh after adding new example files.
-                </p>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: '0.5rem' }}>
-                    📊 <strong>Currently loaded:</strong> {config?.tasks.length || 0} tasks from HTML examples
-                </p>
+            <div style={{ marginBottom: '1.5rem' }}>
+                <button onClick={addTask} className="btn btn-success" style={{ width: '100%' }}>
+                    ➕ Add New Task
+                </button>
             </div>
 
             {config?.tasks.map((task, index) => (
                 <div key={task.id} className="card" style={{ marginBottom: '1.5rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                         <h2 style={{ fontSize: '1.25rem', fontWeight: '600' }}>
-                            Task {index + 1}: {task.name}
+                            Task {index + 1}
                         </h2>
-                        <span style={{
-                            padding: '0.25rem 0.5rem',
-                            background: 'rgba(37, 99, 235, 0.2)',
-                            borderRadius: '4px',
-                            fontSize: '0.75rem',
-                            color: 'var(--primary)'
-                        }}>
-                            ID: {task.id}
-                        </span>
+                        <button
+                            onClick={() => removeTask(task.id)}
+                            style={{
+                                background: 'var(--error)',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                padding: '0.5rem 1rem',
+                                cursor: 'pointer',
+                                fontSize: '0.875rem'
+                            }}
+                        >
+                            🗑️ Remove Task
+                        </button>
                     </div>
-
-                    {/* Images from parsed HTML */}
-                    {task.images.length > 0 && (
-                        <div style={{ marginBottom: '1rem', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>
-                            <h4 style={{ fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Images:</h4>
-                            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                {task.images.map((img, i) => (
-                                    <img key={i} src={`/examples/${img}`} alt="" style={{ maxWidth: '200px', borderRadius: '4px' }} />
-                                ))}
-                            </div>
-                        </div>
-                    )}
 
                     <div style={{ marginBottom: '1.5rem' }}>
                         <label className="input-label">Task Name</label>
@@ -216,6 +285,7 @@ export default function AdminPage() {
                             className="input"
                             value={task.name}
                             onChange={(e) => updateTask(task.id, 'name', e.target.value)}
+                            placeholder="e.g., Prizmatikus rúd megnyúlása"
                         />
                     </div>
 
@@ -225,94 +295,161 @@ export default function AdminPage() {
                         </label>
                         <textarea
                             className="input"
-                            rows={4}
+                            rows={3}
                             value={task.showingText}
                             onChange={(e) => updateTask(task.id, 'showingText', e.target.value)}
+                            placeholder="e.g., A rúd terheletlen hossza l₀ = {{l0}} mm."
                             style={{ resize: 'vertical' }}
                         />
                     </div>
 
-                    {/* Parsed Input Variables (read-only display) */}
-                    <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '0.75rem' }}>
-                        📥 Detected Input Variables ({task.inputVariables.length})
-                    </h3>
-                    <div className="input-grid" style={{ marginBottom: '1.5rem' }}>
-                        {task.inputVariables.map((v, i) => (
-                            <div key={i} style={{ background: 'rgba(255,255,255,0.02)', padding: '0.75rem', borderRadius: '8px' }}>
-                                <div style={{ fontWeight: '500' }}>{v.label}</div>
-                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                    name: <code>{v.name}</code>
-                                    {v.unit && <span style={{ marginLeft: '0.5rem' }}>unit: <code>{v.unit}</code></span>}
+                    {/* Input Variables - EDITABLE */}
+                    <div style={{ marginBottom: '1.5rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                            <h3 style={{ fontSize: '1rem', fontWeight: '600' }}>
+                                📥 Input Variables ({task.inputVariables.length})
+                            </h3>
+                            <button
+                                onClick={() => addInputVariable(task.id)}
+                                className="btn"
+                                style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'var(--primary)' }}
+                            >
+                                + Add Variable
+                            </button>
+                        </div>
+
+                        {task.inputVariables.length === 0 && (
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                                No input variables. Click &quot;Add Variable&quot; to create input fields for the calculation page.
+                            </p>
+                        )}
+
+                        {task.inputVariables.map((v, varIndex) => (
+                            <div key={varIndex} style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                <div style={{ flex: '1 1 120px' }}>
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Name (code)</label>
+                                    <input
+                                        type="text"
+                                        className="input"
+                                        value={v.name}
+                                        onChange={(e) => updateInputVariable(task.id, varIndex, 'name', e.target.value)}
+                                        placeholder="e.g., delta_l"
+                                    />
                                 </div>
+                                <div style={{ flex: '1 1 150px' }}>
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Label (display)</label>
+                                    <input
+                                        type="text"
+                                        className="input"
+                                        value={v.label}
+                                        onChange={(e) => updateInputVariable(task.id, varIndex, 'label', e.target.value)}
+                                        placeholder="e.g., Δl"
+                                    />
+                                </div>
+                                <div style={{ flex: '0 0 80px' }}>
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Unit</label>
+                                    <input
+                                        type="text"
+                                        className="input"
+                                        value={v.unit || ''}
+                                        onChange={(e) => updateInputVariable(task.id, varIndex, 'unit', e.target.value)}
+                                        placeholder="mm"
+                                    />
+                                </div>
+                                <button
+                                    onClick={() => removeInputVariable(task.id, varIndex)}
+                                    style={{
+                                        background: 'var(--error)',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        padding: '0.5rem',
+                                        cursor: 'pointer',
+                                        marginTop: '1.25rem'
+                                    }}
+                                >
+                                    ✕
+                                </button>
                             </div>
                         ))}
                     </div>
 
-                    {/* Equations - editable */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                        <h3 style={{ fontSize: '1rem', fontWeight: '600' }}>
-                            ➗ Equations ({task.equations.length})
-                        </h3>
-                        <button
-                            onClick={() => addEquation(task.id)}
-                            className="btn"
-                            style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'var(--success)' }}
-                        >
-                            + Add Equation
-                        </button>
-                    </div>
-
-                    {task.equations.length === 0 && (
-                        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '1rem' }}>
-                            No equations defined yet. Add equations to calculate output values from inputs.
-                        </p>
-                    )}
-
-                    {task.equations.map((eq, eqIndex) => (
-                        <div key={eqIndex} style={{ display: 'flex', gap: '1rem', marginBottom: '0.75rem', alignItems: 'center' }}>
-                            <input
-                                type="text"
-                                className="input"
-                                style={{ flex: '0 0 150px' }}
-                                value={eq.outputVariable}
-                                onChange={(e) => updateEquation(task.id, eqIndex, 'outputVariable', e.target.value)}
-                                placeholder="output_var"
-                            />
-                            <span>=</span>
-                            <input
-                                type="text"
-                                className="input"
-                                style={{ flex: 1 }}
-                                value={eq.formula}
-                                onChange={(e) => updateEquation(task.id, eqIndex, 'formula', e.target.value)}
-                                placeholder="e.g., sqrt(F * 1000 / sigma_x)"
-                            />
+                    {/* Equations */}
+                    <div style={{ marginBottom: '1rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                            <h3 style={{ fontSize: '1rem', fontWeight: '600' }}>
+                                ➗ Equations ({task.equations.length})
+                            </h3>
                             <button
-                                onClick={() => removeEquation(task.id, eqIndex)}
-                                style={{
-                                    background: 'var(--error)',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '4px',
-                                    padding: '0.5rem',
-                                    cursor: 'pointer'
-                                }}
+                                onClick={() => addEquation(task.id)}
+                                className="btn"
+                                style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'var(--success)' }}
                             >
-                                ✕
+                                + Add Equation
                             </button>
                         </div>
-                    ))}
+
+                        {task.equations.length === 0 && (
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                                No equations. Add equations to calculate output values from input variables.
+                            </p>
+                        )}
+
+                        {task.equations.map((eq, eqIndex) => (
+                            <div key={eqIndex} style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.75rem', alignItems: 'center' }}>
+                                <input
+                                    type="text"
+                                    className="input"
+                                    style={{ flex: '0 0 150px' }}
+                                    value={eq.outputVariable}
+                                    onChange={(e) => updateEquation(task.id, eqIndex, 'outputVariable', e.target.value)}
+                                    placeholder="output_var"
+                                />
+                                <span>=</span>
+                                <input
+                                    type="text"
+                                    className="input"
+                                    style={{ flex: 1 }}
+                                    value={eq.formula}
+                                    onChange={(e) => updateEquation(task.id, eqIndex, 'formula', e.target.value)}
+                                    placeholder="e.g., sqrt(F * 1000 / sigma_x)"
+                                />
+                                <button
+                                    onClick={() => removeEquation(task.id, eqIndex)}
+                                    style={{
+                                        background: 'var(--error)',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        padding: '0.5rem',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Images */}
+                    {task.images.length > 0 && (
+                        <div style={{ padding: '0.75rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>
+                            <h4 style={{ fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Images:</h4>
+                            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                {task.images.map((img, i) => (
+                                    <img key={i} src={`/examples/${img}`} alt="" style={{ maxWidth: '150px', borderRadius: '4px' }} />
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             ))}
 
             {(!config?.tasks || config.tasks.length === 0) && (
                 <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
                     <p style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>
-                        No tasks found. Add HTML example files to the <code>examples/</code> folder and click &quot;Reload from HTML&quot;.
+                        No tasks configured. Add a new task or reload from HTML examples.
                     </p>
-                    <button onClick={handleRefresh} className="btn btn-primary">
-                        🔄 Reload from HTML
-                    </button>
                 </div>
             )}
         </main>
