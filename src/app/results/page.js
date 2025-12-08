@@ -98,149 +98,159 @@ export default function ResultsPage() {
         return (
             <div className="loading-container">
                 <div className="spinner"></div>
-                <p>Eredmények betöltése...</p>
             </div>
         );
     }
 
     return (
-        <>
-            <nav className="navbar">
-                <span className="navbar-brand">Mecha Kalkulátor - Eredmények</span>
-                <button
-                    onClick={handleLogout}
-                    className="btn btn-secondary"
-                    style={{ padding: '0.25rem 0.75rem', fontSize: '0.85rem' }}
-                >
-                    Kijelentkezés
-                </button>
+        <div id="page-wrapper">
+            <nav className="navbar fixed-top navbar-light bg-white navbar-expand">
+                <div className="navbar-brand d-flex align-items-center m-0 p-0">
+                    NyE-Moodle
+                    <button
+                        onClick={handleLogout}
+                        className="btn btn-secondary"
+                        style={{ marginLeft: '1rem', padding: '0.2rem 0.6rem', fontSize: '0.8rem' }}
+                    >
+                        Kijelentkezés
+                    </button>
+                </div>
             </nav>
 
-            <div id="page">
-                <div className="container-fluid">
-                    <div id="page-header" style={{ background: '#d4edda', borderColor: '#28a745' }}>
-                        <h1>✓ Számítás kész - Statika 2025</h1>
+            <div id="page" className="container-fluid">
+                <div id="page-header" className="row">
+                    <div className="col-12 py-3" style={{ padding: '1rem 0', width: '100%' }}>
+                        <div className="page-context-header">
+                            <div className="page-header-headings">
+                                <h1>Statika mérnök hallgatóknak 2025</h1>
+                            </div>
+                        </div>
                     </div>
+                </div>
 
-                    <div id="page-content">
-                        <div id="region-main-box">
-                            {/* Question block with results */}
-                            <div className="que formulas">
-                                <div className="info" style={{ background: '#d4edda' }}>
-                                    <h3 className="no"><span className="qno">{currentTaskIndex + 1}</span> kérdés</h3>
-                                    <div className="state" style={{ color: '#155724' }}>✓ Kész</div>
-                                    <div className="grade">({currentTaskIndex + 1}/{totalTasks} oldal)</div>
-                                </div>
+                <div id="page-content" className="row">
+                    <div id="region-main-box" className="col-12">
 
-                                <div className="content">
-                                    <div className="formulation">
-                                        <div className="qtext">
-                                            <p>{currentTask.description}</p>
+                        {/* Main Content */}
+                        <section id="region-main" className="has-blocks" aria-label="Tartalom">
+                            <div role="main">
+                                <div className="que formulas">
+                                    <div className="info" style={{ background: '#d4edda', borderBottomColor: '#c3e6cb' }}>
+                                        <h3 className="no"><span className="qno">{currentTaskIndex + 1}</span> kérdés</h3>
+                                        <div className="state" style={{ color: '#155724' }}>✓ Befejezve</div>
+                                        <div className="grade">({currentTaskIndex + 1}/{totalTasks} oldal)</div>
+                                    </div>
 
-                                            {currentTask.image && (
-                                                <img
-                                                    src={currentTask.image}
-                                                    alt="Feladat ábra"
-                                                    style={{ maxWidth: '450px' }}
-                                                    onError={(e) => e.target.style.display = 'none'}
-                                                />
-                                            )}
+                                    <div className="content">
+                                        <div className="formulation">
+                                            <div className="qtext">
+                                                <p>{currentTask.description}</p>
 
-                                            <p>
-                                                <strong>A megadott adatok:</strong><br />
-                                                {currentTask.inputs.map((input, i) => (
-                                                    <span key={input.id}>
-                                                        {i > 0 && ', '}
-                                                        {input.label}=
-                                                        <span className="result-value">
-                                                            {getInputValue(currentTask.id, input.id)}
-                                                        </span>
-                                                        {' '}{input.unit}
-                                                    </span>
-                                                ))}
-                                            </p>
-                                        </div>
+                                                {currentTask.image && (
+                                                    <img
+                                                        src={currentTask.image}
+                                                        alt="Feladat ábra"
+                                                        style={{ maxWidth: '100%' }}
+                                                        onError={(e) => e.target.style.display = 'none'}
+                                                    />
+                                                )}
 
-                                        {/* Questions with calculated results */}
-                                        {currentTask.questions.map((question) => (
-                                            <div key={question.id} className="formulaspart" style={{ borderLeftColor: '#28a745' }}>
-                                                <p><strong>{question.text}</strong></p>
                                                 <p>
-                                                    {question.results.map((result) => (
-                                                        <span key={result.id}>
-                                                            {result.prefix}
+                                                    <strong>A megadott adatok:</strong><br />
+                                                    {currentTask.inputs.map((input, i) => (
+                                                        <span key={input.id}>
+                                                            {i > 0 && ', '}
+                                                            {input.label}=
                                                             <span className="result-value">
-                                                                {getResultValue(currentTask.id, result.id)}
+                                                                {getInputValue(currentTask.id, input.id)}
                                                             </span>
-                                                            {result.suffix && <span>{result.suffix}</span>}
-                                                            {result.unit && (
-                                                                <span style={{
-                                                                    display: 'inline-block',
-                                                                    padding: '0.25rem 0.5rem',
-                                                                    marginLeft: '2px',
-                                                                    fontSize: '0.9rem'
-                                                                }}>
-                                                                    {result.unit}
-                                                                </span>
-                                                            )}
-                                                            {' '}
+                                                            <span className="formulas_unit" style={{ margin: '0 0 0 5px' }}>
+                                                                {input.unit}
+                                                            </span>
                                                         </span>
                                                     ))}
                                                 </p>
                                             </div>
-                                        ))}
+
+                                            {/* Questions with calculated results */}
+                                            {currentTask.questions.map((question) => (
+                                                <div key={question.id} className="formulaspart">
+                                                    <p><strong>{question.text}</strong></p>
+                                                    <p>
+                                                        {question.results.map((result) => (
+                                                            <span key={result.id}>
+                                                                {result.prefix}
+                                                                <span className="result-value">
+                                                                    {getResultValue(currentTask.id, result.id)}
+                                                                </span>
+                                                                {result.suffix && <span>{result.suffix}</span>}
+                                                                {result.unit && (
+                                                                    <span className="formulas_unit">
+                                                                        {result.unit}
+                                                                    </span>
+                                                                )}
+                                                                {' '}
+                                                            </span>
+                                                        ))}
+                                                    </p>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            {/* Navigation buttons */}
-                            <div className="submitbtns">
-                                {currentTaskIndex > 0 && (
-                                    <button
-                                        className="btn btn-secondary"
-                                        onClick={() => goToTask(currentTaskIndex - 1)}
-                                        style={{ marginRight: '0.5rem' }}
-                                    >
-                                        Előző oldal
-                                    </button>
-                                )}
+                                {/* Navigation buttons */}
+                                <div className="submitbtns">
+                                    {currentTaskIndex > 0 && (
+                                        <button
+                                            className="btn btn-secondary"
+                                            onClick={() => goToTask(currentTaskIndex - 1)}
+                                            style={{ marginRight: '0.5rem' }}
+                                        >
+                                            Előző oldal
+                                        </button>
+                                    )}
 
-                                {currentTaskIndex < totalTasks - 1 && (
-                                    <button
-                                        className="btn btn-primary"
-                                        onClick={() => goToTask(currentTaskIndex + 1)}
-                                    >
-                                        Következő oldal
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Navigation sidebar */}
-                        <section className={`blocks-column ${showMobileNav ? 'show' : ''}`}>
-                            <section id="mod_quiz_navblock">
-                                <div className="card-body">
-                                    <h3>Eredmény navigáció</h3>
-                                    <div className="qn_buttons">
-                                        {tasks.map((task, index) => (
-                                            <button
-                                                key={task.id}
-                                                className={`qnbutton answered ${index === currentTaskIndex ? 'thispage' : ''}`}
-                                                onClick={() => goToTask(index)}
-                                                title={`${index + 1}. feladat`}
-                                                style={{ borderColor: '#28a745' }}
-                                            >
-                                                {index + 1}.
-                                            </button>
-                                        ))}
-                                    </div>
-                                    <div className="othernav">
-                                        <span style={{ color: '#155724', fontSize: '0.875rem' }}>
-                                            ✓ Minden feladat kész
-                                        </span>
-                                    </div>
+                                    {currentTaskIndex < totalTasks - 1 && (
+                                        <button
+                                            className="btn btn-primary"
+                                            onClick={() => goToTask(currentTaskIndex + 1)}
+                                        >
+                                            Következő oldal
+                                        </button>
+                                    )}
                                 </div>
-                            </section>
+                            </div>
+                        </section>
+
+                        {/* Sidebar Navigation */}
+                        <section className={`blocks-column ${showMobileNav ? 'show' : ''}`} aria-label="Blokkok">
+                            <aside id="block-region-side-pre" className="block-region">
+                                <section id="mod_quiz_navblock" className="block block_fake card mb-3">
+                                    <div className="card-body p-3">
+                                        <h3 className="card-title d-inline">Eredmény navigáció</h3>
+                                        <div className="card-text content mt-3">
+                                            <div className="qn_buttons clearfix multipages">
+                                                {tasks.map((task, index) => (
+                                                    <button
+                                                        key={task.id}
+                                                        className={`qnbutton answered ${index === currentTaskIndex ? 'thispage' : ''}`}
+                                                        onClick={() => goToTask(index)}
+                                                        title={`${index + 1}. feladat`}
+                                                    >
+                                                        {index + 1}.
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <div className="othernav">
+                                                <span style={{ color: '#155724', fontSize: '0.875rem' }}>
+                                                    ✓ Minden feladat kész
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </section>
+                            </aside>
                         </section>
                     </div>
                 </div>
@@ -250,10 +260,9 @@ export default function ResultsPage() {
             <button
                 className="mobile-nav-toggle"
                 onClick={() => setShowMobileNav(!showMobileNav)}
-                style={{ background: '#28a745' }}
             >
-                📋 Navigáció
+                📋
             </button>
-        </>
+        </div>
     );
 }
