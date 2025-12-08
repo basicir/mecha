@@ -1,0 +1,5 @@
+{
+  "projectName": "Mecha Oldal",
+  "userPrompt": "This is a site where the user can have access to a designated calculator app for a specific set of statics problems.\n\nThe goal is for every customer ID to have a one time access, meaning they can always come back to the site but only click \"Calculate\" once.\n\nWe work with supabase+vercel. Tell me the steps for setting up the project!\n\n\n\n",
+  "lastUpdated": "2025-12-08T15:44:52.347Z"
+}
