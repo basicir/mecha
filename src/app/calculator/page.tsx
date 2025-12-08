@@ -227,13 +227,6 @@ export default function CalculatorPage() {
                     </div>
                 </div>
 
-                {/* Formula preview */}
-                <div className="text-center mb-8 p-4 rounded-lg bg-white/5">
-                    <p className="text-gray-400 text-sm mb-1">Formula</p>
-                    <p className="text-xl font-mono text-white">
-                        C = A + B = {inputA || '0'} + {inputB || '0'} = <span className="text-violet-400">{(parseFloat(inputA) || 0) + (parseFloat(inputB) || 0)}</span>
-                    </p>
-                </div>
 
                 {error && (
                     <div className="error-message mb-6">
