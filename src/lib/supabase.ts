@@ -5,93 +5,162 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-// Types for our database
-export interface Customer {
+// Generic types for flexible JSON storage
+export type InputData = Record<string, number | string>
+export type ResultData = Record<string, number | string>
+
+
+// Customer data interface
+export interface CustomerData {
     id: string
     name: string
     created_at: string
-    has_calculated: boolean
     last_access: string | null
+    has_calculated: boolean
+    inputs: InputData
+    results: ResultData
+    inputs_saved_at: string | null
+    results_calculated_at: string | null
 }
 
-export interface SavedInputs {
-    id: string
-    customer_id: string
-    input_a: number
-    input_b: number
-    saved_at: string
+// Config interface for dynamic field configuration
+export interface CalculatorConfig {
+    inputs: Array<{
+        key: string
+        label: string
+        type: 'number' | 'text'
+        placeholder?: string
+    }>
+    formula: {
+        name: string
+        expression: string
+        resultKey: string
+        description: string
+    }
 }
 
-export interface Result {
-    id: string
-    customer_id: string
-    result_c: number
-    calculated_at: string
-}
+// =============================================
+// CUSTOMER DATA FUNCTIONS
+// =============================================
 
-// Helper functions
-export async function validateCustomerId(customerId: string): Promise<Customer | null> {
+/**
+ * Validate a customer ID and return customer data
+ */
+export async function validateCustomerId(customerId: string): Promise<CustomerData | null> {
     const { data, error } = await supabase
-        .from('customers')
+        .from('customer_data')
         .select('*')
         .eq('id', customerId)
         .single()
 
     if (error || !data) return null
-    return data as Customer
+    return data as CustomerData
 }
 
-export async function getSavedInputs(customerId: string): Promise<SavedInputs | null> {
+/**
+ * Get saved inputs for a customer
+ */
+export async function getSavedInputs(customerId: string): Promise<InputData | null> {
     const { data, error } = await supabase
-        .from('saved_inputs')
-        .select('*')
-        .eq('customer_id', customerId)
+        .from('customer_data')
+        .select('inputs')
+        .eq('id', customerId)
         .single()
 
     if (error || !data) return null
-    return data as SavedInputs
+    return data.inputs as InputData
 }
 
-export async function saveInputs(customerId: string, inputA: number, inputB: number): Promise<boolean> {
+/**
+ * Save inputs for a customer (merges with existing inputs)
+ */
+export async function saveInputs(customerId: string, inputs: InputData): Promise<boolean> {
     const { error } = await supabase
-        .from('saved_inputs')
-        .upsert({
-            customer_id: customerId,
-            input_a: inputA,
-            input_b: inputB,
-            saved_at: new Date().toISOString()
-        }, { onConflict: 'customer_id' })
+        .from('customer_data')
+        .update({
+            inputs: inputs,
+            inputs_saved_at: new Date().toISOString(),
+            last_access: new Date().toISOString()
+        })
+        .eq('id', customerId)
 
     return !error
 }
 
+/**
+ * Mark customer as having calculated and save results
+ */
 export async function markAsCalculated(customerId: string): Promise<boolean> {
     const { error } = await supabase
-        .from('customers')
-        .update({ has_calculated: true })
+        .from('customer_data')
+        .update({
+            has_calculated: true,
+            last_access: new Date().toISOString()
+        })
         .eq('id', customerId)
 
     return !error
 }
 
-export async function saveResult(customerId: string, resultC: number): Promise<boolean> {
+/**
+ * Save calculation results
+ */
+export async function saveResult(customerId: string, results: ResultData): Promise<boolean> {
     const { error } = await supabase
-        .from('results')
-        .insert({
-            customer_id: customerId,
-            result_c: resultC
+        .from('customer_data')
+        .update({
+            results: results,
+            results_calculated_at: new Date().toISOString(),
+            has_calculated: true,
+            last_access: new Date().toISOString()
         })
+        .eq('id', customerId)
 
     return !error
 }
 
-export async function getResult(customerId: string): Promise<Result | null> {
+/**
+ * Get results for a customer
+ */
+export async function getResult(customerId: string): Promise<ResultData | null> {
     const { data, error } = await supabase
-        .from('results')
-        .select('*')
-        .eq('customer_id', customerId)
+        .from('customer_data')
+        .select('results')
+        .eq('id', customerId)
         .single()
 
     if (error || !data) return null
-    return data as Result
+    return data.results as ResultData
+}
+
+/**
+ * Get full customer data including inputs and results
+ */
+export async function getCustomerData(customerId: string): Promise<CustomerData | null> {
+    const { data, error } = await supabase
+        .from('customer_data')
+        .select('*')
+        .eq('id', customerId)
+        .single()
+
+    if (error || !data) return null
+    return data as CustomerData
+}
+
+// =============================================
+// CONFIG FUNCTIONS
+// =============================================
+
+/**
+ * Get calculator configuration
+ */
+export async function getCalculatorConfig(): Promise<CalculatorConfig | null> {
+    const { data, error } = await supabase
+        .from('config')
+        .select('config_value')
+        .eq('config_key', 'calculator_fields')
+        .single()
+
+    if (error || !data) return null
+    return data.config_value as CalculatorConfig
 }

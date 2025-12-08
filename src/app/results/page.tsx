@@ -2,17 +2,16 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { validateCustomerId, getResult, getSavedInputs } from '@/lib/supabase'
+import { validateCustomerId, getResult, getSavedInputs, InputData, ResultData } from '@/lib/supabase'
 
-interface ResultData {
-    inputA: number
-    inputB: number
-    resultC: number
+interface DisplayData {
+    inputs: InputData
+    results: ResultData
     calculatedAt: string
 }
 
 export default function ResultsPage() {
-    const [result, setResult] = useState<ResultData | null>(null)
+    const [data, setData] = useState<DisplayData | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
     const router = useRouter()
@@ -40,16 +39,15 @@ export default function ResultsPage() {
                 return
             }
 
-            // Load results
+            // Load results and inputs from customer data
             const resultData = await getResult(storedId)
             const inputData = await getSavedInputs(storedId)
 
             if (resultData) {
-                setResult({
-                    inputA: inputData?.input_a || 0,
-                    inputB: inputData?.input_b || 0,
-                    resultC: resultData.result_c,
-                    calculatedAt: resultData.calculated_at
+                setData({
+                    inputs: inputData || {},
+                    results: resultData,
+                    calculatedAt: customer.results_calculated_at || new Date().toISOString()
                 })
             } else {
                 setError('Could not load results. Please try again.')
@@ -109,36 +107,34 @@ export default function ResultsPage() {
                 </div>
 
                 {/* Result display */}
-                {result && (
+                {data && (
                     <div className="space-y-6">
                         {/* Main result */}
                         <div className="text-center p-6 rounded-xl bg-white/5">
                             <p className="text-gray-400 text-sm mb-2">Result (C)</p>
-                            <p className="result-value">{result.resultC}</p>
+                            <p className="result-value">{data.results.c}</p>
                         </div>
 
-                        {/* Input values */}
+                        {/* Input values - dynamically render all inputs */}
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="text-center p-4 rounded-lg bg-white/5">
-                                <p className="text-gray-400 text-xs mb-1">Value A</p>
-                                <p className="text-2xl font-semibold text-white">{result.inputA}</p>
-                            </div>
-                            <div className="text-center p-4 rounded-lg bg-white/5">
-                                <p className="text-gray-400 text-xs mb-1">Value B</p>
-                                <p className="text-2xl font-semibold text-white">{result.inputB}</p>
-                            </div>
+                            {Object.entries(data.inputs).map(([key, value]) => (
+                                <div key={key} className="text-center p-4 rounded-lg bg-white/5">
+                                    <p className="text-gray-400 text-xs mb-1">Value {key.toUpperCase()}</p>
+                                    <p className="text-2xl font-semibold text-white">{String(value)}</p>
+                                </div>
+                            ))}
                         </div>
 
                         {/* Formula */}
                         <div className="text-center p-4 rounded-lg bg-violet-500/10 border border-violet-500/20">
                             <p className="font-mono text-lg text-white">
-                                C = A + B = {result.inputA} + {result.inputB} = <span className="text-violet-400 font-bold">{result.resultC}</span>
+                                C = A + B = {data.inputs.a} + {data.inputs.b} = <span className="text-violet-400 font-bold">{data.results.c}</span>
                             </p>
                         </div>
 
                         {/* Calculated at */}
                         <p className="text-center text-gray-500 text-xs">
-                            Calculated on {new Date(result.calculatedAt).toLocaleString()}
+                            Calculated on {new Date(data.calculatedAt).toLocaleString()}
                         </p>
                     </div>
                 )}

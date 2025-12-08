@@ -1,97 +1,88 @@
 -- =============================================
--- MECHA OLDAL - SUPABASE DATABASE SCHEMA
+-- MECHA OLDAL - SUPABASE DATABASE SCHEMA v2
 -- =============================================
+-- Scalable JSON-based storage for inputs and results
 -- Run this in your Supabase SQL Editor
 
--- 1. CUSTOMERS TABLE
--- Stores customer IDs and their calculation status
-CREATE TABLE IF NOT EXISTS customers (
+-- Drop old tables if migrating (CAREFUL - this deletes data!)
+-- DROP TABLE IF EXISTS results CASCADE;
+-- DROP TABLE IF EXISTS saved_inputs CASCADE;
+-- DROP TABLE IF EXISTS customers CASCADE;
+-- DROP TABLE IF EXISTS config CASCADE;
+
+-- 1. CUSTOMER DATA TABLE
+-- Stores all customer data in a single row with JSONB columns
+CREATE TABLE IF NOT EXISTS customer_data (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
+  last_access TIMESTAMPTZ,
   has_calculated BOOLEAN DEFAULT FALSE,
-  last_access TIMESTAMPTZ
+  
+  -- Flexible JSON storage for inputs and results
+  inputs JSONB DEFAULT '{}'::jsonb,
+  results JSONB DEFAULT '{}'::jsonb,
+  
+  -- Metadata
+  inputs_saved_at TIMESTAMPTZ,
+  results_calculated_at TIMESTAMPTZ
 );
 
 -- Enable Row Level Security
-ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE customer_data ENABLE ROW LEVEL SECURITY;
 
--- 2. SAVED INPUTS TABLE
--- Auto-saves user input values every 2 seconds
-CREATE TABLE IF NOT EXISTS saved_inputs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  customer_id UUID REFERENCES customers(id) ON DELETE CASCADE,
-  input_a NUMERIC DEFAULT 0,
-  input_b NUMERIC DEFAULT 0,
-  saved_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(customer_id)
-);
-
-ALTER TABLE saved_inputs ENABLE ROW LEVEL SECURITY;
-
--- 3. RESULTS TABLE
--- Stores calculated results
-CREATE TABLE IF NOT EXISTS results (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  customer_id UUID REFERENCES customers(id) ON DELETE CASCADE,
-  result_c NUMERIC,
-  calculated_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(customer_id)
-);
-
-ALTER TABLE results ENABLE ROW LEVEL SECURITY;
-
--- 4. CONFIG TABLE
--- Stores equations configuration
+-- 2. CONFIG TABLE
+-- Stores equations and field configurations
 CREATE TABLE IF NOT EXISTS config (
   id SERIAL PRIMARY KEY,
-  equation_name TEXT NOT NULL,
-  equation_formula TEXT NOT NULL,
+  config_key TEXT UNIQUE NOT NULL,
+  config_value JSONB NOT NULL,
   description TEXT
 );
 
--- Insert default equation
-INSERT INTO config (equation_name, equation_formula, description) 
-VALUES ('sum', 'A + B', 'Adds two values together')
-ON CONFLICT DO NOTHING;
+-- Insert default configuration for fields
+INSERT INTO config (config_key, config_value, description) 
+VALUES (
+  'calculator_fields',
+  '{
+    "inputs": [
+      {"key": "a", "label": "Value A", "type": "number", "placeholder": "Enter value A"},
+      {"key": "b", "label": "Value B", "type": "number", "placeholder": "Enter value B"}
+    ],
+    "formula": {
+      "name": "sum",
+      "expression": "a + b",
+      "resultKey": "c",
+      "description": "Adds two values together"
+    }
+  }'::jsonb,
+  'Calculator input fields and formula configuration'
+)
+ON CONFLICT (config_key) DO NOTHING;
 
 -- =============================================
 -- ROW LEVEL SECURITY POLICIES
 -- =============================================
 
--- Allow anonymous users to check if their ID exists
-CREATE POLICY "Allow ID verification" ON customers
+-- Allow all operations for now (use service role for admin operations)
+CREATE POLICY "Allow select customer_data" ON customer_data
   FOR SELECT USING (true);
 
--- Allow updating has_calculated flag
-CREATE POLICY "Allow calculate update" ON customers
-  FOR UPDATE USING (true);
-
--- Allow saving inputs (insert and update)
-CREATE POLICY "Allow insert inputs" ON saved_inputs
+CREATE POLICY "Allow insert customer_data" ON customer_data
   FOR INSERT WITH CHECK (true);
 
-CREATE POLICY "Allow select inputs" ON saved_inputs
-  FOR SELECT USING (true);
-
-CREATE POLICY "Allow update inputs" ON saved_inputs
+CREATE POLICY "Allow update customer_data" ON customer_data
   FOR UPDATE USING (true);
-
--- Allow storing and viewing results
-CREATE POLICY "Allow insert results" ON results
-  FOR INSERT WITH CHECK (true);
-
-CREATE POLICY "Allow select results" ON results
-  FOR SELECT USING (true);
 
 -- Allow reading config
 CREATE POLICY "Allow read config" ON config
   FOR SELECT USING (true);
 
 -- =============================================
--- HELPER FUNCTION: Generate Customer ID
+-- HELPER FUNCTIONS
 -- =============================================
 
+-- Generate a new customer ID
 CREATE OR REPLACE FUNCTION generate_customer_id(customer_name TEXT)
 RETURNS UUID
 LANGUAGE plpgsql
@@ -99,16 +90,88 @@ AS $$
 DECLARE
   new_id UUID;
 BEGIN
-  INSERT INTO customers (name) VALUES (customer_name) RETURNING id INTO new_id;
+  INSERT INTO customer_data (name) VALUES (customer_name) RETURNING id INTO new_id;
   RETURN new_id;
 END;
 $$;
 
+-- Update inputs for a customer (merges with existing inputs)
+CREATE OR REPLACE FUNCTION update_customer_inputs(
+  p_customer_id UUID,
+  p_inputs JSONB
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  UPDATE customer_data 
+  SET 
+    inputs = COALESCE(inputs, '{}'::jsonb) || p_inputs,
+    inputs_saved_at = NOW(),
+    last_access = NOW()
+  WHERE id = p_customer_id;
+  
+  RETURN FOUND;
+END;
+$$;
+
+-- Save results for a customer
+CREATE OR REPLACE FUNCTION save_customer_results(
+  p_customer_id UUID,
+  p_results JSONB
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  UPDATE customer_data 
+  SET 
+    results = p_results,
+    results_calculated_at = NOW(),
+    has_calculated = TRUE,
+    last_access = NOW()
+  WHERE id = p_customer_id;
+  
+  RETURN FOUND;
+END;
+$$;
+
+-- =============================================
+-- MIGRATION HELPER (if you have existing data)
+-- =============================================
+-- Run this to migrate from old schema to new:
+/*
+INSERT INTO customer_data (id, name, created_at, has_calculated, last_access, inputs, results)
+SELECT 
+  c.id,
+  c.name,
+  c.created_at,
+  c.has_calculated,
+  c.last_access,
+  COALESCE(
+    jsonb_build_object('a', si.input_a, 'b', si.input_b),
+    '{}'::jsonb
+  ),
+  COALESCE(
+    jsonb_build_object('c', r.result_c),
+    '{}'::jsonb
+  )
+FROM customers c
+LEFT JOIN saved_inputs si ON c.id = si.customer_id
+LEFT JOIN results r ON c.id = r.customer_id;
+*/
+
 -- =============================================
 -- USAGE EXAMPLES
 -- =============================================
--- Generate a new customer ID:
+-- Generate a new customer:
 -- SELECT generate_customer_id('John Doe');
 --
--- Check if ID exists and hasn't calculated:
--- SELECT id, has_calculated FROM customers WHERE id = 'your-uuid-here';
+-- Save inputs:
+-- SELECT update_customer_inputs('uuid-here', '{"a": 10, "b": 20}'::jsonb);
+--
+-- Save results:
+-- SELECT save_customer_results('uuid-here', '{"c": 30}'::jsonb);
+--
+-- Get customer data:
+-- SELECT * FROM customer_data WHERE id = 'uuid-here';

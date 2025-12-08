@@ -6,13 +6,14 @@ import {
     validateCustomerId,
     getSavedInputs,
     saveInputs,
-    markAsCalculated,
-    saveResult
+    saveResult,
+    InputData,
+    ResultData
 } from '@/lib/supabase'
 
 export default function CalculatorPage() {
-    const [inputA, setInputA] = useState<string>('')
-    const [inputB, setInputB] = useState<string>('')
+    // Store inputs as a flexible object
+    const [inputs, setInputs] = useState<InputData>({ a: 0, b: 0 })
     const [customerId, setCustomerId] = useState<string | null>(null)
     const [loading, setLoading] = useState(true)
     const [calculating, setCalculating] = useState(false)
@@ -20,7 +21,7 @@ export default function CalculatorPage() {
     const [error, setError] = useState('')
     const router = useRouter()
     const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-    const lastSavedRef = useRef<{ a: string; b: string }>({ a: '', b: '' })
+    const lastSavedRef = useRef<string>('')
 
     // Check authentication and load saved inputs
     useEffect(() => {
@@ -50,13 +51,9 @@ export default function CalculatorPage() {
 
             // Load saved inputs
             const savedInputs = await getSavedInputs(storedId)
-            if (savedInputs) {
-                setInputA(savedInputs.input_a?.toString() || '')
-                setInputB(savedInputs.input_b?.toString() || '')
-                lastSavedRef.current = {
-                    a: savedInputs.input_a?.toString() || '',
-                    b: savedInputs.input_b?.toString() || ''
-                }
+            if (savedInputs && Object.keys(savedInputs).length > 0) {
+                setInputs(savedInputs)
+                lastSavedRef.current = JSON.stringify(savedInputs)
             }
 
             setLoading(false)
@@ -69,24 +66,22 @@ export default function CalculatorPage() {
     const performSave = useCallback(async () => {
         if (!customerId) return
 
+        const currentInputsStr = JSON.stringify(inputs)
+
         // Only save if values have changed
-        if (lastSavedRef.current.a === inputA && lastSavedRef.current.b === inputB) {
+        if (lastSavedRef.current === currentInputsStr) {
             return
         }
 
         setSaveStatus('saving')
-        const success = await saveInputs(
-            customerId,
-            parseFloat(inputA) || 0,
-            parseFloat(inputB) || 0
-        )
+        const success = await saveInputs(customerId, inputs)
 
         if (success) {
-            lastSavedRef.current = { a: inputA, b: inputB }
+            lastSavedRef.current = currentInputsStr
             setSaveStatus('saved')
             setTimeout(() => setSaveStatus('idle'), 2000)
         }
-    }, [customerId, inputA, inputB])
+    }, [customerId, inputs])
 
     useEffect(() => {
         if (!customerId || loading) return
@@ -104,7 +99,15 @@ export default function CalculatorPage() {
                 clearTimeout(saveTimeoutRef.current)
             }
         }
-    }, [inputA, inputB, customerId, loading, performSave])
+    }, [inputs, customerId, loading, performSave])
+
+    // Generic input change handler
+    const handleInputChange = (key: string, value: string) => {
+        setInputs(prev => ({
+            ...prev,
+            [key]: parseFloat(value) || 0
+        }))
+    }
 
     const handleCalculate = async () => {
         if (!customerId) return
@@ -114,22 +117,14 @@ export default function CalculatorPage() {
 
         try {
             // Calculate result (A + B)
-            const a = parseFloat(inputA) || 0
-            const b = parseFloat(inputB) || 0
-            const result = a + b
+            const a = Number(inputs.a) || 0
+            const b = Number(inputs.b) || 0
+            const result: ResultData = { c: a + b }
 
             // Save result to database
             const resultSaved = await saveResult(customerId, result)
             if (!resultSaved) {
                 setError('Failed to save result. Please try again.')
-                setCalculating(false)
-                return
-            }
-
-            // Mark customer as having calculated
-            const marked = await markAsCalculated(customerId)
-            if (!marked) {
-                setError('Failed to complete calculation. Please try again.')
                 setCalculating(false)
                 return
             }
@@ -201,8 +196,8 @@ export default function CalculatorPage() {
                         <input
                             type="number"
                             id="inputA"
-                            value={inputA}
-                            onChange={(e) => setInputA(e.target.value)}
+                            value={inputs.a || ''}
+                            onChange={(e) => handleInputChange('a', e.target.value)}
                             placeholder="Enter value A"
                             className="input-field"
                             disabled={calculating}
@@ -217,8 +212,8 @@ export default function CalculatorPage() {
                         <input
                             type="number"
                             id="inputB"
-                            value={inputB}
-                            onChange={(e) => setInputB(e.target.value)}
+                            value={inputs.b || ''}
+                            onChange={(e) => handleInputChange('b', e.target.value)}
                             placeholder="Enter value B"
                             className="input-field"
                             disabled={calculating}
@@ -226,7 +221,6 @@ export default function CalculatorPage() {
                         />
                     </div>
                 </div>
-
 
                 {error && (
                     <div className="error-message mb-6">
