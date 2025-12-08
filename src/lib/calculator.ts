@@ -13,9 +13,9 @@ export function calculateTask(
         try {
             // Parse and evaluate the equation with input values as scope
             const result = math.evaluate(equation.formula, inputs);
-            outputs[equation.outputVariable] = typeof result === 'number'
+            outputs[equation.outputVariable] = (result !== null && typeof result === 'number')
                 ? Number(result.toFixed(6))
-                : result;
+                : (result ?? NaN);
         } catch (error) {
             console.error(`Error calculating ${equation.outputVariable}:`, error);
             outputs[equation.outputVariable] = NaN;
@@ -40,7 +40,7 @@ export function calculateAllTasks(
     });
 }
 
-export function formatResult(value: number, precision: number = 4): string {
-    if (isNaN(value)) return 'N/A';
+export function formatResult(value: number | null | undefined, precision: number = 4): string {
+    if (value === null || value === undefined || isNaN(value)) return 'N/A';
     return value.toFixed(precision);
 }

@@ -39,8 +39,8 @@ export default function ResultsPage() {
         setLoading(false);
     };
 
-    const formatResult = (value: number | undefined): string => {
-        if (value === undefined || isNaN(value)) return 'N/A';
+    const formatResult = (value: number | null | undefined): string => {
+        if (value === null || value === undefined || isNaN(value)) return 'N/A';
         return value.toFixed(4);
     };
 
