@@ -1,305 +1,254 @@
-'use client';
+'use client'
 
-import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
-import { calculateResults, validateInputs } from '@/lib/calculator';
-import tasksConfig from '@/lib/config/tasks.json';
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { useRouter } from 'next/navigation'
+import { validateCustomerId, saveUserInputs, loadUserInputs, saveCalculationResults } from '@/lib/supabase'
+import { calculateTask, validateInputs } from '@/lib/calculator'
+
+// Demo task configuration - this would come from CONFIG JSON in production
+const demoTask = {
+    id: 'task_1',
+    title: 'Igénybevételek számítása',
+    description: 'Merev rúd tartós egyensúlyban - kényszererők és igénybevételek számítása',
+    inputs: [
+        { name: 'a', label: 'a', unit: 'm', defaultValue: '' },
+        { name: 'b', label: 'b', unit: 'm', defaultValue: '' },
+        { name: 'q1', label: 'q₁', unit: 'kN/m', defaultValue: '' },
+        { name: 'F2', label: 'F₂', unit: 'kN', defaultValue: '' },
+        { name: 'alpha', label: 'α', unit: '°', defaultValue: '' }
+    ],
+    outputs: [
+        { name: 'FA_x', label: 'F⃗_A x komponens', unit: 'kN', equation: 'F2 * cos(alpha)', decimals: 2 },
+        { name: 'FA_y', label: 'F⃗_A y komponens', unit: 'kN', equation: 'q1 * a - F2 * sin(alpha)', decimals: 2 },
+        { name: 'FB_y', label: 'F⃗_B y komponens', unit: 'kN', equation: 'q1 * b + F2 * sin(alpha)', decimals: 2 }
+    ]
+}
 
 export default function CalculatorPage() {
-    const router = useRouter();
-    const [loading, setLoading] = useState(true);
-    const [calculating, setCalculating] = useState(false);
-    const [customerId, setCustomerId] = useState(null);
-    const [customerName, setCustomerName] = useState('');
-    const [inputs, setInputs] = useState({});
-    const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
+    const router = useRouter()
+    const [customerId, setCustomerId] = useState(null)
+    const [loading, setLoading] = useState(true)
+    const [inputs, setInputs] = useState({})
+    const [saveStatus, setSaveStatus] = useState('saved')
+    const [calculating, setCalculating] = useState(false)
+    const [error, setError] = useState('')
+    const saveTimeoutRef = useRef(null)
 
-    const tasks = tasksConfig.tasks;
-    const currentTask = tasks[currentTaskIndex];
-    const totalTasks = tasks.length;
-
+    // Check authentication on mount
     useEffect(() => {
-        const storedId = localStorage.getItem('customerId');
-        const storedName = localStorage.getItem('customerName');
-        const hasCalculated = localStorage.getItem('hasCalculated');
+        const checkAuth = async () => {
+            const storedId = sessionStorage.getItem('customerId')
 
-        if (!storedId) {
-            router.push('/');
-            return;
-        }
+            if (!storedId) {
+                router.push('/')
+                return
+            }
 
-        if (hasCalculated === 'true') {
-            router.push('/results');
-            return;
-        }
+            const { valid, hasCalculated } = await validateCustomerId(storedId)
 
-        setCustomerId(storedId);
-        setCustomerName(storedName || 'Felhasználó');
-        loadSavedInputs(storedId);
-    }, [router]);
+            if (!valid) {
+                sessionStorage.removeItem('customerId')
+                router.push('/')
+                return
+            }
 
-    const loadSavedInputs = async (id) => {
-        try {
-            const { data } = await supabase
-                .from('input_values')
-                .select('values')
-                .eq('customer_id', id)
-                .single();
+            if (hasCalculated) {
+                router.push('/results')
+                return
+            }
 
-            if (data) {
-                setInputs(data.values || {});
+            setCustomerId(storedId)
+
+            // Load saved inputs
+            const { inputs: savedInputs } = await loadUserInputs(storedId, demoTask.id)
+            if (savedInputs && Object.keys(savedInputs).length > 0) {
+                setInputs(savedInputs)
             } else {
-                const localData = localStorage.getItem(`inputs_${id}`);
-                if (localData) setInputs(JSON.parse(localData));
+                // Initialize with default values
+                const defaultInputs = {}
+                demoTask.inputs.forEach(input => {
+                    defaultInputs[input.name] = input.defaultValue || ''
+                })
+                setInputs(defaultInputs)
             }
-        } catch (err) {
-            const localData = localStorage.getItem(`inputs_${id}`);
-            if (localData) setInputs(JSON.parse(localData));
-        } finally {
-            setLoading(false);
+
+            setLoading(false)
         }
-    };
 
-    // Autosave
-    const saveInputs = useCallback(async () => {
-        if (!customerId || Object.keys(inputs).length === 0) return;
-        try {
-            await supabase
-                .from('input_values')
-                .upsert({
-                    customer_id: customerId,
-                    task_id: 'all_tasks',
-                    values: inputs,
-                    updated_at: new Date().toISOString()
-                }, { onConflict: 'customer_id,task_id' });
-        } catch (err) {
-            localStorage.setItem(`inputs_${customerId}`, JSON.stringify(inputs));
+        checkAuth()
+    }, [router])
+
+    // Auto-save every 2 seconds when inputs change
+    const autoSave = useCallback(async (currentInputs) => {
+        if (!customerId) return
+
+        setSaveStatus('saving')
+        const result = await saveUserInputs(customerId, demoTask.id, currentInputs)
+        setSaveStatus(result.success ? 'saved' : 'error')
+    }, [customerId])
+
+    // Handle input change with debounced auto-save
+    const handleInputChange = (name, value) => {
+        const newInputs = { ...inputs, [name]: value }
+        setInputs(newInputs)
+
+        // Clear existing timeout
+        if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current)
         }
-    }, [customerId, inputs]);
 
-    useEffect(() => {
-        const timer = setTimeout(saveInputs, 2000);
-        return () => clearTimeout(timer);
-    }, [inputs, saveInputs]);
+        // Set new timeout for auto-save (2 seconds)
+        saveTimeoutRef.current = setTimeout(() => {
+            autoSave(newInputs)
+        }, 2000)
+    }
 
-    const handleInputChange = (taskId, inputId, value) => {
-        setInputs(prev => ({
-            ...prev,
-            [`${taskId}_${inputId}`]: value
-        }));
-    };
-
-    const getInputValue = (taskId, inputId) => {
-        return inputs[`${taskId}_${inputId}`] || '';
-    };
-
-    const isTaskAnswered = (taskId) => {
-        const task = tasks.find(t => t.id === taskId);
-        if (!task) return false;
-        return task.inputs.some(input => getInputValue(taskId, input.id));
-    };
-
-    const goToTask = (index) => {
-        setCurrentTaskIndex(index);
-        window.scrollTo(0, 0);
-    };
-
-    // Render the inputsDisplay string with input fields inserted at {variable} positions
-    const renderInputsDisplay = () => {
-        if (!currentTask.inputsDisplay) return null;
-
-        // Split by {variableName} pattern
-        const parts = currentTask.inputsDisplay.split(/(\{[^}]+\})/g);
-
-        return parts.map((part, index) => {
-            // Check if this part is a variable placeholder like {a} or {alpha}
-            const match = part.match(/^\{(.+)\}$/);
-            if (match) {
-                const varName = match[1];
-                const inputDef = currentTask.inputs.find(i => i.id === varName);
-                if (inputDef) {
-                    return (
-                        <span key={index}>
-                            <input
-                                type="number"
-                                step="any"
-                                className="formulas_number"
-                                value={getInputValue(currentTask.id, inputDef.id)}
-                                onChange={(e) => handleInputChange(currentTask.id, inputDef.id, e.target.value)}
-                                placeholder={inputDef.placeholder || ''}
-                            />
-                            <span className="formulas_unit">{inputDef.unit}</span>
-                        </span>
-                    );
-                }
-            }
-            // Return text parts, preserving newlines
-            return part.split('\n').map((line, i) => (
-                <span key={`${index}-${i}`}>
-                    {i > 0 && <br />}
-                    {line}
-                </span>
-            ));
-        });
-    };
-
+    // Handle calculate button
     const handleCalculate = async () => {
-        let allValid = true;
-        let missingTask = null;
+        setError('')
 
-        for (const task of tasks) {
-            const taskInputs = {};
-            task.inputs.forEach(input => {
-                taskInputs[input.id] = getInputValue(task.id, input.id);
-            });
-
-            if (!validateInputs(taskInputs, task.inputs.map(i => i.id))) {
-                allValid = false;
-                missingTask = task;
-                break;
-            }
+        // Validate inputs
+        const validation = validateInputs(demoTask.inputs, inputs)
+        if (!validation.valid) {
+            setError(`Kérjük, töltse ki a következő mezőket: ${validation.missing.join(', ')}`)
+            return
         }
 
-        if (!allValid && missingTask) {
-            alert(`Kérjük, töltse ki az összes mezőt!`);
-            const index = tasks.findIndex(t => t.id === missingTask.id);
-            if (index !== -1) setCurrentTaskIndex(index);
-            return;
-        }
-
-        setCalculating(true);
+        setCalculating(true)
 
         try {
-            const allResults = {};
+            // Calculate results
+            const results = calculateTask(demoTask, inputs)
 
-            for (const task of tasks) {
-                const taskInputs = {};
-                task.inputs.forEach(input => {
-                    taskInputs[input.id] = parseFloat(getInputValue(task.id, input.id));
-                });
+            // Save results and mark as calculated
+            const saveResult = await saveCalculationResults(customerId, demoTask.id, inputs, results)
 
-                const results = calculateResults(taskInputs, task.equations);
-                allResults[task.id] = { inputs: taskInputs, results };
+            if (!saveResult.success) {
+                throw new Error(saveResult.error || 'Failed to save results')
             }
 
-            localStorage.setItem(`results_${customerId}`, JSON.stringify({ allResults }));
-            localStorage.setItem('hasCalculated', 'true');
-
-            try {
-                await supabase.from('customers').update({ has_calculated: true }).eq('id', customerId);
-                await supabase.from('calculation_results').insert({
-                    customer_id: customerId,
-                    task_id: 'all_tasks',
-                    inputs: inputs,
-                    results: allResults,
-                    calculated_at: new Date().toISOString()
-                });
-            } catch (dbError) {
-                console.log('DB error:', dbError);
-            }
-
-            router.push('/results');
+            // Redirect to results page
+            router.push('/results')
         } catch (err) {
-            console.error('Calculation error:', err);
-            alert('Hiba történt a számítás során.');
-        } finally {
-            setCalculating(false);
+            console.error('Calculation error:', err)
+            setError('Hiba történt a számítás során. Kérjük, próbálja újra.')
+            setCalculating(false)
         }
-    };
+    }
 
     if (loading) {
-        return <div className="loading-container">Betöltés...</div>;
+        return (
+            <div className="page-container">
+                <div className="loading">
+                    <div className="spinner"></div>
+                </div>
+            </div>
+        )
     }
 
     return (
-        <>
-            <nav className="navbar">
-                <span className="navbar-brand">NyE-Moodle - {customerName}</span>
-            </nav>
+        <div className="page-container">
+            <div className="page-header">
+                <h1>Statika Kalkulátor</h1>
+            </div>
 
-            <div id="page">
-                <div id="page-header">
-                    <h1>Statika mérnök hallgatóknak 2025</h1>
+            <div className="que formulas">
+                <div className="info">
+                    <h3>{demoTask.title}</h3>
+                    <div className="state">{demoTask.description}</div>
                 </div>
 
-                <div id="page-content">
-                    <section id="region-main">
-                        {/* A KÉK DIV - EZ A FORMULATION */}
-                        <div className="formulation">
-                            <div className="qtext">
-                                <p><strong>{currentTask.title}</strong></p>
-                                <p>{currentTask.description}</p>
+                <div className="content">
+                    <div className="qtext">
+                        <p>
+                            Az ábrán látható merev rúd tartós egyensúlyban van. A koordináta-rendszer origója a rúd baloldali végével esik egybe.
+                        </p>
+                        <p><strong>Az ismert adatok:</strong></p>
+                    </div>
 
-                                {currentTask.image && (
-                                    <img
-                                        src={currentTask.image}
-                                        alt="Feladat ábra"
-                                        onError={(e) => e.target.style.display = 'none'}
-                                    />
-                                )}
+                    <div className="formulaspart">
+                        <p>
+                            a = <input
+                                type="text"
+                                className="formulas_number"
+                                value={inputs.a || ''}
+                                onChange={(e) => handleInputChange('a', e.target.value)}
+                                placeholder="?"
+                            /> m,
+                            b = <input
+                                type="text"
+                                className="formulas_number"
+                                value={inputs.b || ''}
+                                onChange={(e) => handleInputChange('b', e.target.value)}
+                                placeholder="?"
+                            /> m
+                        </p>
+                        <p>
+                            q₁ = <input
+                                type="text"
+                                className="formulas_number"
+                                value={inputs.q1 || ''}
+                                onChange={(e) => handleInputChange('q1', e.target.value)}
+                                placeholder="?"
+                            /> kN/m,
+                            F₂ = <input
+                                type="text"
+                                className="formulas_number"
+                                value={inputs.F2 || ''}
+                                onChange={(e) => handleInputChange('F2', e.target.value)}
+                                placeholder="?"
+                            /> kN,
+                            α = <input
+                                type="text"
+                                className="formulas_number"
+                                value={inputs.alpha || ''}
+                                onChange={(e) => handleInputChange('alpha', e.target.value)}
+                                placeholder="?"
+                            /> °
+                        </p>
+                    </div>
 
-                                <p>{renderInputsDisplay()}</p>
-                            </div>
-
-                            {/* Kérdések és eredmény placeholderek */}
-                            {currentTask.questions.map((question) => (
-                                <div key={question.id} style={{ marginTop: '15px' }}>
-                                    <p><strong>{question.text}</strong></p>
-                                    <p>
-                                        {question.results.map((result) => (
-                                            <span key={result.id}>
-                                                {result.prefix}
-                                                <span className="result-placeholder">?</span>
-                                                {result.suffix}
-                                                {result.unit && <span className="formulas_unit">{result.unit}</span>}
-                                                {' '}
-                                            </span>
-                                        ))}
-                                    </p>
-                                </div>
-                            ))}
+                    {demoTask.outputs.map((output, idx) => (
+                        <div key={idx} className="formulaspart">
+                            <p>
+                                <strong>{output.label}:</strong>{' '}
+                                <input
+                                    type="text"
+                                    className="formulas_number"
+                                    disabled
+                                    placeholder="[Eredmény]"
+                                /> {output.unit}
+                            </p>
                         </div>
-
-                        {/* Navigation */}
-                        <div className="submitbtns">
-                            {currentTaskIndex > 0 && (
-                                <button className="btn btn-secondary" onClick={() => goToTask(currentTaskIndex - 1)}>
-                                    Előző oldal
-                                </button>
-                            )}
-
-                            {currentTaskIndex < totalTasks - 1 ? (
-                                <button className="btn btn-primary" onClick={() => goToTask(currentTaskIndex + 1)}>
-                                    Következő oldal
-                                </button>
-                            ) : (
-                                <button className="btn btn-primary" onClick={handleCalculate} disabled={calculating}>
-                                    {calculating ? 'Számítás...' : 'Számítás befejezése'}
-                                </button>
-                            )}
-                        </div>
-                    </section>
-
-                    {/* Sidebar */}
-                    <aside className="blocks-column">
-                        <div className="nav-block">
-                            <h3>Feladatok</h3>
-                            <div className="nav-buttons">
-                                {tasks.map((task, index) => (
-                                    <button
-                                        key={task.id}
-                                        className={`nav-btn ${index === currentTaskIndex ? 'active' : ''} ${isTaskAnswered(task.id) ? 'answered' : ''}`}
-                                        onClick={() => goToTask(index)}
-                                    >
-                                        {index + 1}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    </aside>
+                    ))}
                 </div>
             </div>
-        </>
-    );
+
+            {error && (
+                <div className="alert alert-danger">
+                    {error}
+                </div>
+            )}
+
+            <div className="calculate-container">
+                <button
+                    className="btn btn-success btn-lg"
+                    onClick={handleCalculate}
+                    disabled={calculating}
+                >
+                    {calculating ? 'Számítás folyamatban...' : 'Számítás'}
+                </button>
+                <p style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: '#666' }}>
+                    Figyelem: A számítás gombra csak egyszer kattinthat!
+                </p>
+            </div>
+
+            {/* Auto-save indicator */}
+            <div className={`autosave-indicator ${saveStatus}`}>
+                {saveStatus === 'saving' && '💾 Mentés...'}
+                {saveStatus === 'saved' && '✓ Mentve'}
+                {saveStatus === 'error' && '⚠ Mentési hiba'}
+            </div>
+        </div>
+    )
 }

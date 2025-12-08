@@ -1,80 +1,36 @@
-# Mecha Oldal - Statika Kalkulátor
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-A calculator web application for statics problems, built for engineering students. Users with approved customer IDs can input variables and calculate results based on pre-configured exam templates.
+## Getting Started
 
-## Features
-
-- 🔐 **UUID-based Authentication**: Each customer gets a unique ID for access
-- 🧮 **One-Time Calculation**: Users can calculate only once per customer ID
-- 💾 **Auto-save**: Input values are saved every 2 seconds
-- 📱 **Mobile-Friendly**: Responsive design for all devices
-- 🇭🇺 **Hungarian UI**: Full Hungarian language interface
-
-## Tech Stack
-
-- **Frontend**: Next.js 15 with React
-- **Database**: Supabase (PostgreSQL)
-- **Deployment**: Vercel
-- **Math Engine**: mathjs
-
-## Setup
-
-### 1. Clone and Install
-
-```bash
-git clone <repo-url>
-cd mecha
-npm install
-```
-
-### 2. Configure Supabase
-
-1. Create a project at [supabase.com](https://supabase.com)
-2. Run the SQL schema in Supabase SQL Editor:
-   ```
-   supabase-schema.sql
-   ```
-3. Create `.env.local` from example:
-   ```bash
-   cp .env.local.example .env.local
-   ```
-4. Add your Supabase credentials to `.env.local`
-
-### 3. Run Development Server
+First, run the development server:
 
 ```bash
 npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
 
-### 4. Deploy to Vercel
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-Connect your GitHub repo to Vercel and add environment variables.
+You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
 
-## Project Structure
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-```
-src/
-├── app/
-│   ├── page.js           # Sign-in page
-│   ├── calculator/       # Calculator interface
-│   └── results/          # Results display
-├── lib/
-│   ├── supabase.js       # Database client
-│   ├── calculator.js     # Math engine
-│   └── config/
-│       └── tasks.json    # Problem configurations
-```
+## Learn More
 
-## Creating Customer IDs
+To learn more about Next.js, take a look at the following resources:
 
-Use the Supabase SQL Editor:
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-```sql
-SELECT generate_customer_id('Customer Name');
-```
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-This returns a UUID that the customer can use to sign in.
+## Deploy on Vercel
 
-## License
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
-Private project.
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.

@@ -1,81 +1,69 @@
--- Mecha Oldal - Supabase Database Schema
+-- Mecha Oldal - Supabase Schema
 -- Run this in your Supabase SQL Editor
 
--- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
--- Customers table (stores approved customer IDs)
+-- Customer IDs table (approved UUIDs that function as passwords)
 CREATE TABLE IF NOT EXISTS customers (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   has_calculated BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Input values table (for autosave)
-CREATE TABLE IF NOT EXISTS input_values (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  customer_id UUID NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+-- User inputs (auto-saved every 2 seconds)
+CREATE TABLE IF NOT EXISTS user_inputs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  customer_id UUID REFERENCES customers(id) ON DELETE CASCADE,
   task_id TEXT NOT NULL,
-  values JSONB NOT NULL DEFAULT '{}',
+  inputs JSONB DEFAULT '{}',
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   UNIQUE(customer_id, task_id)
 );
 
--- Calculation results table
+-- Calculation results (stored after Calculate button is clicked)
 CREATE TABLE IF NOT EXISTS calculation_results (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  customer_id UUID NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  customer_id UUID REFERENCES customers(id) ON DELETE CASCADE,
   task_id TEXT NOT NULL,
-  inputs JSONB NOT NULL DEFAULT '{}',
-  results JSONB NOT NULL DEFAULT '{}',
+  inputs JSONB DEFAULT '{}',
+  results JSONB DEFAULT '{}',
   calculated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Index for faster lookups
-CREATE INDEX IF NOT EXISTS idx_customers_id ON customers(id);
-CREATE INDEX IF NOT EXISTS idx_input_values_customer ON input_values(customer_id, task_id);
-CREATE INDEX IF NOT EXISTS idx_results_customer ON calculation_results(customer_id, task_id);
-
--- Row Level Security (RLS) Policies
+-- Enable Row Level Security
 ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
-ALTER TABLE input_values ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_inputs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE calculation_results ENABLE ROW LEVEL SECURITY;
 
--- Allow public read for customer validation
-CREATE POLICY "Public can validate customer IDs" ON customers
+-- Policies for customers (read-only for valid UUIDs)
+CREATE POLICY "Allow read for valid customers" ON customers
   FOR SELECT USING (true);
 
--- Allow insert/update for input values
-CREATE POLICY "Anyone can manage input values" ON input_values
+-- Policies for user_inputs (customers can manage their own inputs)
+CREATE POLICY "Allow all for own inputs" ON user_inputs
   FOR ALL USING (true);
 
--- Allow insert/select for calculation results
-CREATE POLICY "Anyone can manage calculation results" ON calculation_results
+-- Policies for calculation_results (customers can manage their own results)
+CREATE POLICY "Allow all for own results" ON calculation_results
   FOR ALL USING (true);
 
--- Allow update on customers (for has_calculated flag)
-CREATE POLICY "Anyone can update customers" ON customers
-  FOR UPDATE USING (true);
-
--- Function to generate new customer ID
+-- Function to generate a new customer ID
 CREATE OR REPLACE FUNCTION generate_customer_id(customer_name TEXT)
-RETURNS UUID AS $$
-DECLARE
-  new_id UUID;
+RETURNS UUID
+LANGUAGE SQL
+AS $$
+  INSERT INTO customers (name) VALUES (customer_name) RETURNING id;
+$$;
+
+-- Update timestamp trigger for user_inputs
+CREATE OR REPLACE FUNCTION update_updated_at()
+RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO customers (name)
-  VALUES (customer_name)
-  RETURNING id INTO new_id;
-  
-  RETURN new_id;
+  NEW.updated_at = NOW();
+  RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
--- Sample data for testing (optional)
--- INSERT INTO customers (id, name) VALUES 
---   ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'Test User 1'),
---   ('b2c3d4e5-f6a7-8901-bcde-12345678901a', 'Test User 2');
-
--- View all customers (admin query)
--- SELECT id, name, has_calculated, created_at FROM customers;
+CREATE TRIGGER user_inputs_updated_at
+  BEFORE UPDATE ON user_inputs
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at();
