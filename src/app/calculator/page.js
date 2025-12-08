@@ -5,34 +5,21 @@ import { useRouter } from 'next/navigation'
 import { validateCustomerId, saveUserInputs, loadUserInputs, saveCalculationResults } from '@/lib/supabase'
 import { calculateTask, validateInputs } from '@/lib/calculator'
 
-// Demo task configuration - this would come from CONFIG JSON in production
-const demoTask = {
-    id: 'task_1',
-    title: 'Igénybevételek számítása',
-    description: 'Merev rúd tartós egyensúlyban - kényszererők és igénybevételek számítása',
-    inputs: [
-        { name: 'a', label: 'a', unit: 'm', defaultValue: '' },
-        { name: 'b', label: 'b', unit: 'm', defaultValue: '' },
-        { name: 'q1', label: 'q₁', unit: 'kN/m', defaultValue: '' },
-        { name: 'F2', label: 'F₂', unit: 'kN', defaultValue: '' },
-        { name: 'alpha', label: 'α', unit: '°', defaultValue: '' }
-    ],
-    outputs: [
-        { name: 'FA_x', label: 'F⃗_A x komponens', unit: 'kN', equation: 'F2 * cos(alpha)', decimals: 2 },
-        { name: 'FA_y', label: 'F⃗_A y komponens', unit: 'kN', equation: 'q1 * a - F2 * sin(alpha)', decimals: 2 },
-        { name: 'FB_y', label: 'F⃗_B y komponens', unit: 'kN', equation: 'q1 * b + F2 * sin(alpha)', decimals: 2 }
-    ]
-}
-
 export default function CalculatorPage() {
     const router = useRouter()
     const [customerId, setCustomerId] = useState(null)
     const [loading, setLoading] = useState(true)
+    const [tasks, setTasks] = useState([])
+    const [selectedTask, setSelectedTask] = useState(null)
+    const [taskHtml, setTaskHtml] = useState('')
+    const [taskConfig, setTaskConfig] = useState(null)
     const [inputs, setInputs] = useState({})
+    const [results, setResults] = useState(null)
     const [saveStatus, setSaveStatus] = useState('saved')
     const [calculating, setCalculating] = useState(false)
     const [error, setError] = useState('')
     const saveTimeoutRef = useRef(null)
+    const contentRef = useRef(null)
 
     // Check authentication on mount
     useEffect(() => {
@@ -59,18 +46,10 @@ export default function CalculatorPage() {
 
             setCustomerId(storedId)
 
-            // Load saved inputs
-            const { inputs: savedInputs } = await loadUserInputs(storedId, demoTask.id)
-            if (savedInputs && Object.keys(savedInputs).length > 0) {
-                setInputs(savedInputs)
-            } else {
-                // Initialize with default values
-                const defaultInputs = {}
-                demoTask.inputs.forEach(input => {
-                    defaultInputs[input.name] = input.defaultValue || ''
-                })
-                setInputs(defaultInputs)
-            }
+            // Load all tasks dynamically
+            const res = await fetch('/api/tasks')
+            const data = await res.json()
+            setTasks(data.tasks || [])
 
             setLoading(false)
         }
@@ -78,26 +57,48 @@ export default function CalculatorPage() {
         checkAuth()
     }, [router])
 
+    // Load specific task when selected
+    const loadTask = async (taskId) => {
+        try {
+            setLoading(true)
+            const res = await fetch(`/api/tasks/${taskId}`)
+            const data = await res.json()
+
+            setSelectedTask(data)
+            setTaskHtml(data.html)
+            setTaskConfig(data.config)
+
+            // Load saved inputs for this task
+            const { inputs: savedInputs } = await loadUserInputs(customerId, taskId)
+            setInputs(savedInputs || {})
+            setResults(null)
+
+            setLoading(false)
+        } catch (err) {
+            console.error('Error loading task:', err)
+            setError('Failed to load task')
+            setLoading(false)
+        }
+    }
+
     // Auto-save every 2 seconds when inputs change
     const autoSave = useCallback(async (currentInputs) => {
-        if (!customerId) return
+        if (!customerId || !selectedTask) return
 
         setSaveStatus('saving')
-        const result = await saveUserInputs(customerId, demoTask.id, currentInputs)
+        const result = await saveUserInputs(customerId, selectedTask.id, currentInputs)
         setSaveStatus(result.success ? 'saved' : 'error')
-    }, [customerId])
+    }, [customerId, selectedTask])
 
     // Handle input change with debounced auto-save
-    const handleInputChange = (name, value) => {
-        const newInputs = { ...inputs, [name]: value }
+    const handleInputChange = (fieldId, value) => {
+        const newInputs = { ...inputs, [fieldId]: value }
         setInputs(newInputs)
 
-        // Clear existing timeout
         if (saveTimeoutRef.current) {
             clearTimeout(saveTimeoutRef.current)
         }
 
-        // Set new timeout for auto-save (2 seconds)
         saveTimeoutRef.current = setTimeout(() => {
             autoSave(newInputs)
         }, 2000)
@@ -105,29 +106,41 @@ export default function CalculatorPage() {
 
     // Handle calculate button
     const handleCalculate = async () => {
+        if (!selectedTask || !taskConfig) {
+            setError('Please select a task first')
+            return
+        }
+
         setError('')
 
-        // Validate inputs
-        const validation = validateInputs(demoTask.inputs, inputs)
-        if (!validation.valid) {
-            setError(`Kérjük, töltse ki a következő mezőket: ${validation.missing.join(', ')}`)
-            return
+        // Validate inputs based on config
+        if (taskConfig.inputs && taskConfig.inputs.length > 0) {
+            const validation = validateInputs(taskConfig.inputs, inputs)
+            if (!validation.valid) {
+                setError(`Kérjük, töltse ki a következő mezőket: ${validation.missing.join(', ')}`)
+                return
+            }
         }
 
         setCalculating(true)
 
         try {
             // Calculate results
-            const results = calculateTask(demoTask, inputs)
+            const calculatedResults = calculateTask(taskConfig, inputs)
 
             // Save results and mark as calculated
-            const saveResult = await saveCalculationResults(customerId, demoTask.id, inputs, results)
+            const saveResult = await saveCalculationResults(
+                customerId,
+                selectedTask.id,
+                inputs,
+                calculatedResults
+            )
 
             if (!saveResult.success) {
                 throw new Error(saveResult.error || 'Failed to save results')
             }
 
-            // Redirect to results page
+            setResults(calculatedResults)
             router.push('/results')
         } catch (err) {
             console.error('Calculation error:', err)
@@ -135,6 +148,64 @@ export default function CalculatorPage() {
             setCalculating(false)
         }
     }
+
+    // Process HTML to inject interactive inputs
+    const processHtml = (html) => {
+        if (!html) return { __html: '' }
+
+        // Fix image paths to point to API
+        let processed = html.replace(
+            /src="(img_\d+\.jpg)"/g,
+            `src="/api/tasks/${selectedTask?.id}/image/$1"`
+        )
+
+        return { __html: processed }
+    }
+
+    // Attach event listeners to input fields after HTML is rendered
+    useEffect(() => {
+        if (!contentRef.current || !selectedTask) return
+
+        // Find all formulas_number and formulas_unit inputs
+        const inputFields = contentRef.current.querySelectorAll('input.formulas_number, input.formulas_unit')
+
+        inputFields.forEach((input, index) => {
+            const fieldId = input.id || input.name || `field_${index}`
+
+            // Set value from saved inputs
+            if (inputs[fieldId]) {
+                input.value = inputs[fieldId]
+            }
+
+            // If we have results and this is a result field, show result
+            if (results && taskConfig?.outputs) {
+                const output = taskConfig.outputs.find(o => o.fieldId === fieldId)
+                if (output && results[output.name] !== undefined) {
+                    input.value = results[output.name]
+                    input.disabled = true
+                    input.style.backgroundColor = '#d4edda'
+                    input.style.border = '2px solid #198754'
+                    input.style.fontWeight = 'bold'
+                }
+            }
+
+            // Add change listener for input fields (not result fields)
+            const isResultField = taskConfig?.outputs?.some(o => o.fieldId === fieldId)
+            if (!isResultField) {
+                input.addEventListener('input', (e) => {
+                    handleInputChange(fieldId, e.target.value)
+                })
+            }
+        })
+
+        return () => {
+            // Cleanup listeners
+            const inputFields = contentRef.current?.querySelectorAll('input.formulas_number, input.formulas_unit')
+            inputFields?.forEach(input => {
+                input.removeEventListener('input', () => { })
+            })
+        }
+    }, [selectedTask, taskHtml, inputs, results, taskConfig])
 
     if (loading) {
         return (
@@ -146,83 +217,56 @@ export default function CalculatorPage() {
         )
     }
 
-    return (
-        <div className="page-container">
-            <div className="page-header">
-                <h1>Statika Kalkulátor</h1>
-            </div>
-
-            <div className="que formulas">
-                <div className="info">
-                    <h3>{demoTask.title}</h3>
-                    <div className="state">{demoTask.description}</div>
+    // Task selection view
+    if (!selectedTask) {
+        return (
+            <div className="page-container">
+                <div className="page-header">
+                    <h1>Válasszon feladatot</h1>
                 </div>
 
-                <div className="content">
-                    <div className="qtext">
-                        <p>
-                            Az ábrán látható merev rúd tartós egyensúlyban van. A koordináta-rendszer origója a rúd baloldali végével esik egybe.
-                        </p>
-                        <p><strong>Az ismert adatok:</strong></p>
-                    </div>
-
-                    <div className="formulaspart">
-                        <p>
-                            a = <input
-                                type="text"
-                                className="formulas_number"
-                                value={inputs.a || ''}
-                                onChange={(e) => handleInputChange('a', e.target.value)}
-                                placeholder="?"
-                            /> m,
-                            b = <input
-                                type="text"
-                                className="formulas_number"
-                                value={inputs.b || ''}
-                                onChange={(e) => handleInputChange('b', e.target.value)}
-                                placeholder="?"
-                            /> m
-                        </p>
-                        <p>
-                            q₁ = <input
-                                type="text"
-                                className="formulas_number"
-                                value={inputs.q1 || ''}
-                                onChange={(e) => handleInputChange('q1', e.target.value)}
-                                placeholder="?"
-                            /> kN/m,
-                            F₂ = <input
-                                type="text"
-                                className="formulas_number"
-                                value={inputs.F2 || ''}
-                                onChange={(e) => handleInputChange('F2', e.target.value)}
-                                placeholder="?"
-                            /> kN,
-                            α = <input
-                                type="text"
-                                className="formulas_number"
-                                value={inputs.alpha || ''}
-                                onChange={(e) => handleInputChange('alpha', e.target.value)}
-                                placeholder="?"
-                            /> °
-                        </p>
-                    </div>
-
-                    {demoTask.outputs.map((output, idx) => (
-                        <div key={idx} className="formulaspart">
-                            <p>
-                                <strong>{output.label}:</strong>{' '}
-                                <input
-                                    type="text"
-                                    className="formulas_number"
-                                    disabled
-                                    placeholder="[Eredmény]"
-                                /> {output.unit}
-                            </p>
+                <div className="task-list">
+                    {tasks.map((task) => (
+                        <div
+                            key={task.id}
+                            className="task-card"
+                            onClick={() => loadTask(task.id)}
+                        >
+                            <h3>{task.title}</h3>
+                            <p>Kattintson a feladat megnyitásához</p>
                         </div>
                     ))}
                 </div>
+
+                {tasks.length === 0 && (
+                    <div className="alert alert-info">
+                        Nincsenek elérhető feladatok.
+                    </div>
+                )}
             </div>
+        )
+    }
+
+    // Task view with injected inputs
+    return (
+        <div className="page-container">
+            <div className="page-header">
+                <button
+                    className="btn btn-secondary"
+                    onClick={() => setSelectedTask(null)}
+                    style={{ marginBottom: '1rem' }}
+                >
+                    ← Vissza a feladatokhoz
+                </button>
+                <h1>{selectedTask.title}</h1>
+            </div>
+
+            {/* Render the original HTML with dynamic inputs */}
+            <div
+                ref={contentRef}
+                className="task-content"
+                dangerouslySetInnerHTML={processHtml(taskHtml)}
+            />
 
             {error && (
                 <div className="alert alert-danger">

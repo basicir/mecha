@@ -1,0 +1,17 @@
+{
+    "tasks": {
+        "page_files_2": {
+            "inputs": [],
+            "outputs": []
+        },
+        "page_files_3": {
+            "inputs": [],
+            "outputs": []
+        },
+        "page_files_4": {
+            "inputs": [],
+            "outputs": []
+        }
+    },
+    "_comment": "This file configures input field positions and equations for each task. Edit via the admin panel at /admin"
+}
