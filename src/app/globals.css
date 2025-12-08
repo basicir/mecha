@@ -1,23 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
-:root {
-  --primary: #1976d2;
-  --primary-dark: #1565c0;
-  --primary-light: #42a5f5;
-  --success: #2e7d32;
-  --warning: #ed6c02;
-  --error: #d32f2f;
-  --background: #f5f5f5;
-  --surface: #ffffff;
-  --text-primary: #212121;
-  --text-secondary: #757575;
-  --border-color: #e0e0e0;
-  --input-bg: #ffffff;
-  --input-border: #bdbdbd;
-  --input-focus: #1976d2;
-  --result-bg: #e3f2fd;
-  --result-border: #1976d2;
-}
+/* Moodle-szerű stílusok - NyE-Moodle pontos másolata */
 
 * {
   box-sizing: border-box;
@@ -27,329 +8,433 @@
 
 html,
 body {
-  max-width: 100vw;
-  overflow-x: hidden;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: var(--background);
-  color: var(--text-primary);
-  line-height: 1.6;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: #1d2125;
+  background-color: #f0f0f0;
 }
 
-/* Navbar */
+/* Navbar - Moodle stílus */
 .navbar {
-  background: var(--surface);
-  padding: 1rem 2rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  position: sticky;
+  position: fixed;
   top: 0;
-  z-index: 100;
+  left: 0;
+  right: 0;
+  z-index: 1030;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+  background-color: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
 }
 
 .navbar-brand {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--primary);
+  font-weight: 500;
+  color: #1d2125;
+  text-decoration: none;
 }
 
-/* Main Container */
-.container {
-  max-width: 1200px;
+/* Fő container */
+#page {
+  padding-top: 60px;
+  max-width: 100%;
+}
+
+.container-fluid {
+  width: 100%;
+  padding: 0 15px;
   margin: 0 auto;
-  padding: 2rem;
+  max-width: 1400px;
 }
 
-/* Page Header */
-.page-header {
-  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-  color: white;
-  padding: 2rem;
-  border-radius: 12px;
-  margin-bottom: 2rem;
-  box-shadow: 0 4px 20px rgba(25, 118, 210, 0.3);
+/* Page header */
+#page-header {
+  padding: 1.5rem 0;
+  background: #fff;
+  border-bottom: 1px solid #dee2e6;
+  margin-bottom: 1rem;
 }
 
-.page-header h1 {
+#page-header h1 {
   font-size: 1.75rem;
-  font-weight: 700;
-  margin-bottom: 0.5rem;
+  font-weight: 400;
+  margin: 0;
+  color: #1d2125;
 }
 
-.page-header p {
-  opacity: 0.9;
+/* Fő tartalom layout */
+#page-content {
+  display: flex;
+  gap: 1rem;
+}
+
+#region-main-box {
+  flex: 1;
+  min-width: 0;
+}
+
+.blocks-column {
+  width: 240px;
+  flex-shrink: 0;
+}
+
+/* Kérdés blokk - Moodle .que */
+.que {
+  margin-bottom: 1.5rem;
+  background: #fff;
+  border: 1px solid #dee2e6;
+}
+
+.que .info {
+  float: left;
+  width: 7rem;
+  padding: 0.5rem;
+  background: #f8f9fa;
+  border-right: 1px solid #dee2e6;
+  min-height: 100%;
+}
+
+.que .info h3.no {
+  margin: 0 0 0.5rem;
   font-size: 1rem;
+  font-weight: normal;
 }
 
-/* Sign In Form */
+.que .info .qno {
+  font-weight: bold;
+}
+
+.que .info .state {
+  font-size: 0.8rem;
+  color: #6c757d;
+  margin-bottom: 0.25rem;
+}
+
+.que .info .grade {
+  font-size: 0.8rem;
+  color: #6c757d;
+}
+
+.que .content {
+  margin-left: 7rem;
+  padding: 0.75rem;
+}
+
+.que .formulation {
+  margin-bottom: 1rem;
+}
+
+.que .qtext {
+  margin-bottom: 1rem;
+}
+
+.que .qtext p {
+  margin: 0.5rem 0;
+}
+
+.que .qtext img {
+  max-width: 100%;
+  height: auto;
+  margin: 1rem 0;
+}
+
+/* Formulaspart - egyes alkérdések */
+.formulaspart {
+  margin: 1rem 0;
+  padding: 0.75rem;
+  background: #fafafa;
+  border-left: 3px solid #1177d1;
+}
+
+.formulaspart p {
+  margin: 0.25rem 0;
+}
+
+/* Input mezők - Moodle .formulas_number */
+.formulas_number {
+  width: 60px !important;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.9rem;
+  border: 1px solid #8f959e;
+  border-radius: 0;
+  background: #fff;
+  margin: 0 2px;
+  text-align: center;
+}
+
+.formulas_number:focus {
+  outline: none;
+  border-color: #1177d1;
+  box-shadow: 0 0 0 2px rgba(17, 119, 209, 0.25);
+}
+
+.formulas_number.has-value {
+  background: #e7f5e7;
+  border-color: #28a745;
+}
+
+/* Mértékegység mező */
+.formulas_unit {
+  width: 60px !important;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.9rem;
+  border: 1px solid #8f959e;
+  border-radius: 0;
+  background: #f8f9fa;
+  margin: 0 2px;
+  text-align: center;
+}
+
+/* Eredmény placeholder (nem input!) */
+.result-placeholder {
+  display: inline-block;
+  min-width: 60px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.9rem;
+  background: #fff3cd;
+  border: 1px dashed #856404;
+  text-align: center;
+  color: #856404;
+  margin: 0 2px;
+}
+
+.result-value {
+  display: inline-block;
+  min-width: 60px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.9rem;
+  background: #d4edda;
+  border: 1px solid #28a745;
+  text-align: center;
+  color: #155724;
+  font-weight: bold;
+  margin: 0 2px;
+}
+
+/* Submit gombok */
+.submitbtns {
+  margin: 1.5rem 0;
+  text-align: left;
+}
+
+.btn {
+  display: inline-block;
+  font-weight: 400;
+  text-align: center;
+  vertical-align: middle;
+  cursor: pointer;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  border-radius: 0.5rem;
+  border: 1px solid transparent;
+  text-decoration: none;
+}
+
+.btn-primary {
+  color: #fff;
+  background-color: #0f6cbf;
+  border-color: #0f6cbf;
+}
+
+.btn-primary:hover {
+  background-color: #0d5ca3;
+  border-color: #0c549a;
+}
+
+.btn-secondary {
+  color: #1d2125;
+  background-color: #ced4da;
+  border-color: #ced4da;
+}
+
+.btn-secondary:hover {
+  background-color: #b8c0c8;
+  border-color: #b1bbc4;
+}
+
+/* Navigáció sidebar */
+#mod_quiz_navblock {
+  background: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+#mod_quiz_navblock .card-body {
+  padding: 0.75rem;
+}
+
+#mod_quiz_navblock h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: #1d2125;
+}
+
+/* Navigációs gombok */
+.qn_buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.qnbutton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #1d2125;
+  background: #f8f9fa;
+  border: 2px solid #dee2e6;
+  border-radius: 0.25rem;
+  text-decoration: none;
+  cursor: pointer;
+  position: relative;
+}
+
+.qnbutton:hover {
+  background: #e9ecef;
+  border-color: #ced4da;
+}
+
+.qnbutton.thispage {
+  background: #fff3cd;
+  border-color: #ffc107;
+}
+
+.qnbutton.answered {
+  background: #d4edda;
+  border-color: #28a745;
+}
+
+.qnbutton.notyetanswered::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 6px;
+  background: #dc3545;
+  border-radius: 50%;
+}
+
+/* Egyéb navigáció linkek */
+.othernav {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #dee2e6;
+}
+
+.othernav a {
+  color: #0f6cbf;
+  text-decoration: none;
+  font-size: 0.875rem;
+}
+
+.othernav a:hover {
+  text-decoration: underline;
+}
+
+/* Autosave indicator */
+.autosave-indicator {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 10px 16px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+  font-size: 0.85rem;
+  z-index: 100;
+}
+
+.autosave-indicator.saving {
+  color: #856404;
+}
+
+.autosave-indicator.saved {
+  color: #155724;
+}
+
+/* Sign In oldal */
 .signin-container {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #1177d1, #0f6cbf);
 }
 
 .signin-card {
-  background: var(--surface);
-  padding: 3rem;
-  border-radius: 16px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  max-width: 420px;
+  background: #fff;
+  padding: 2.5rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  max-width: 400px;
   width: 100%;
   text-align: center;
 }
 
 .signin-card h1 {
-  font-size: 2rem;
+  font-size: 1.75rem;
   margin-bottom: 0.5rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #1d2125;
 }
 
 .signin-card p {
-  color: var(--text-secondary);
-  margin-bottom: 2rem;
+  color: #6c757d;
+  margin-bottom: 1.5rem;
 }
 
-.signin-card input {
+.signin-card input[type="text"] {
   width: 100%;
-  padding: 1rem 1.25rem;
+  padding: 0.75rem 1rem;
   font-size: 1rem;
-  border: 2px solid var(--border-color);
-  border-radius: 12px;
+  border: 1px solid #ced4da;
+  border-radius: 0.5rem;
   margin-bottom: 1rem;
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-.signin-card input:focus {
+.signin-card input[type="text"]:focus {
   outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 4px rgba(25, 118, 210, 0.15);
+  border-color: #0f6cbf;
+  box-shadow: 0 0 0 3px rgba(15, 108, 191, 0.15);
 }
 
 .signin-card button {
   width: 100%;
-  padding: 1rem 2rem;
+  padding: 0.75rem 1.5rem;
   font-size: 1rem;
-  font-weight: 600;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  font-weight: 500;
+  background: #0f6cbf;
+  color: #fff;
   border: none;
-  border-radius: 12px;
+  border-radius: 0.5rem;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .signin-card button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
-}
-
-.signin-card button:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-  transform: none;
+  background: #0d5ca3;
 }
 
 .error-message {
-  background: #ffebee;
-  color: var(--error);
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
+  background: #f8d7da;
+  color: #721c24;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
   margin-bottom: 1rem;
   font-size: 0.9rem;
 }
 
-/* Task Card (Moodle-style question block) */
-.task-card {
-  background: var(--surface);
-  border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  margin-bottom: 2rem;
-  overflow: hidden;
-}
-
-.task-header {
-  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--border-color);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.task-number {
-  background: var(--primary);
-  color: white;
-  padding: 0.25rem 0.75rem;
-  border-radius: 20px;
-  font-size: 0.875rem;
-  font-weight: 600;
-}
-
-.task-status {
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-}
-
-.task-content {
-  padding: 1.5rem;
-}
-
-.task-image {
-  width: 100%;
-  max-width: 500px;
-  margin: 1rem auto;
-  display: block;
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-}
-
-/* Input Display (inline with text) */
-.inputs-display {
-  background: #fafafa;
-  padding: 1.25rem;
-  border-radius: 8px;
-  margin: 1rem 0;
-  font-size: 1.1rem;
-  line-height: 2.2;
-}
-
-.inline-input {
-  display: inline-block;
-  width: 70px;
-  padding: 0.25rem 0.5rem;
-  font-size: 1rem;
-  border: 2px solid var(--input-border);
-  border-radius: 6px;
-  text-align: center;
-  background: var(--input-bg);
-  transition: all 0.2s ease;
-  margin: 0 0.25rem;
-}
-
-.inline-input:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.15);
-}
-
-.inline-input.has-value {
-  border-color: var(--success);
-  background: #f1f8e9;
-}
-
-/* Result Field (highlighted) */
-.result-field {
-  display: inline-block;
-  min-width: 70px;
-  padding: 0.25rem 0.75rem;
-  font-size: 1rem;
-  font-weight: 600;
-  background: var(--result-bg);
-  border: 2px solid var(--result-border);
-  border-radius: 6px;
-  text-align: center;
-  color: var(--primary-dark);
-  margin: 0 0.25rem;
-}
-
-/* Question Block */
-.question-block {
-  background: #fafafa;
-  padding: 1.25rem;
-  border-radius: 8px;
-  margin: 1rem 0;
-  border-left: 4px solid var(--primary);
-}
-
-.question-block h4 {
-  font-size: 1rem;
-  font-weight: 500;
-  margin-bottom: 1rem;
-  color: var(--text-primary);
-}
-
-.question-results {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 1.1rem;
-}
-
-/* Calculate Button */
-.calculate-btn {
-  display: block;
-  width: 100%;
-  max-width: 300px;
-  margin: 2rem auto;
-  padding: 1rem 2rem;
-  font-size: 1.1rem;
-  font-weight: 600;
-  background: linear-gradient(135deg, var(--success), #1b5e20);
-  color: white;
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(46, 125, 50, 0.3);
-}
-
-.calculate-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(46, 125, 50, 0.4);
-}
-
-.calculate-btn:disabled {
-  background: #bdbdbd;
-  box-shadow: none;
-  cursor: not-allowed;
-  transform: none;
-}
-
-/* Autosave Indicator */
-.autosave-indicator {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  padding: 0.5rem 1rem;
-  background: var(--surface);
-  border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
-  font-size: 0.875rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  z-index: 100;
-}
-
-.autosave-indicator.saving {
-  color: var(--warning);
-}
-
-.autosave-indicator.saved {
-  color: var(--success);
-}
-
-/* Results Page */
-.results-header {
-  background: linear-gradient(135deg, var(--success), #1b5e20);
-}
-
-.results-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: rgba(255, 255, 255, 0.2);
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  font-size: 0.9rem;
-  margin-top: 0.5rem;
-}
-
-/* Loading Spinner */
+/* Loading spinner */
 .loading-container {
   display: flex;
   flex-direction: column;
@@ -360,10 +445,10 @@ body {
 }
 
 .spinner {
-  width: 48px;
-  height: 48px;
-  border: 4px solid var(--border-color);
-  border-top-color: var(--primary);
+  width: 40px;
+  height: 40px;
+  border: 3px solid #dee2e6;
+  border-top-color: #0f6cbf;
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -374,32 +459,69 @@ body {
   }
 }
 
-/* Mobile Responsiveness */
+/* Responsive */
+@media (max-width: 992px) {
+  .blocks-column {
+    display: none;
+  }
+
+  #page-content {
+    flex-direction: column;
+  }
+}
+
 @media (max-width: 768px) {
-  .container {
+  .que .info {
+    float: none;
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid #dee2e6;
+  }
+
+  .que .content {
+    margin-left: 0;
+  }
+
+  .formulas_number,
+  .formulas_unit {
+    width: 55px !important;
+    font-size: 0.85rem;
+  }
+}
+
+/* Mobile nav toggle */
+.mobile-nav-toggle {
+  display: none;
+  position: fixed;
+  bottom: 70px;
+  right: 20px;
+  padding: 10px 16px;
+  background: #0f6cbf;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  z-index: 100;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+}
+
+@media (max-width: 992px) {
+  .mobile-nav-toggle {
+    display: block;
+  }
+
+  .blocks-column.show {
+    display: block;
+    position: fixed;
+    top: 60px;
+    right: 0;
+    bottom: 0;
+    width: 260px;
+    background: #fff;
+    z-index: 1020;
+    overflow-y: auto;
     padding: 1rem;
-  }
-
-  .page-header h1 {
-    font-size: 1.4rem;
-  }
-
-  .task-content {
-    padding: 1rem;
-  }
-
-  .inputs-display {
-    font-size: 1rem;
-    line-height: 2.5;
-  }
-
-  .inline-input {
-    width: 60px;
-    font-size: 0.9rem;
-  }
-
-  .signin-card {
-    margin: 1rem;
-    padding: 2rem;
+    box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
   }
 }

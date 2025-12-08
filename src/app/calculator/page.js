@@ -14,7 +14,12 @@ export default function CalculatorPage() {
     const [customerName, setCustomerName] = useState('');
     const [inputs, setInputs] = useState({});
     const [saveStatus, setSaveStatus] = useState('saved');
-    const [currentTask] = useState(tasksConfig.tasks[0]); // Use first task for now
+    const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
+    const [showMobileNav, setShowMobileNav] = useState(false);
+
+    const tasks = tasksConfig.tasks;
+    const currentTask = tasks[currentTaskIndex];
+    const totalTasks = tasks.length;
 
     // Check authentication
     useEffect(() => {
@@ -40,16 +45,18 @@ export default function CalculatorPage() {
     // Load previously saved inputs
     const loadSavedInputs = async (id) => {
         try {
-            // Try to load from Supabase
             const { data, error } = await supabase
                 .from('input_values')
                 .select('values')
                 .eq('customer_id', id)
-                .eq('task_id', currentTask.id)
                 .single();
 
             if (!error && data) {
                 setInputs(data.values || {});
+            } else {
+                // Try localStorage
+                const localData = localStorage.getItem(`inputs_${id}`);
+                if (localData) setInputs(JSON.parse(localData));
             }
         } catch (err) {
             console.log('Could not load saved inputs:', err);
@@ -65,95 +72,116 @@ export default function CalculatorPage() {
         setSaveStatus('saving');
 
         try {
-            // Try to save to Supabase
-            const { error } = await supabase
+            await supabase
                 .from('input_values')
                 .upsert({
                     customer_id: customerId,
-                    task_id: currentTask.id,
+                    task_id: 'all_tasks',
                     values: inputs,
                     updated_at: new Date().toISOString()
-                }, {
-                    onConflict: 'customer_id,task_id'
-                });
-
-            if (error) throw error;
+                }, { onConflict: 'customer_id,task_id' });
             setSaveStatus('saved');
         } catch (err) {
-            console.log('Autosave to Supabase failed, saving locally:', err);
-            // Fallback to localStorage
             localStorage.setItem(`inputs_${customerId}`, JSON.stringify(inputs));
             setSaveStatus('saved');
         }
-    }, [customerId, inputs, currentTask.id]);
+    }, [customerId, inputs]);
 
-    // Debounced autosave
     useEffect(() => {
         const timer = setTimeout(saveInputs, 2000);
         return () => clearTimeout(timer);
     }, [inputs, saveInputs]);
 
     // Handle input change
-    const handleInputChange = (inputId, value) => {
+    const handleInputChange = (taskId, inputId, value) => {
         setInputs(prev => ({
             ...prev,
-            [inputId]: value
+            [`${taskId}_${inputId}`]: value
         }));
         setSaveStatus('unsaved');
     };
 
+    // Get input value
+    const getInputValue = (taskId, inputId) => {
+        return inputs[`${taskId}_${inputId}`] || '';
+    };
+
+    // Check if task has any filled inputs
+    const isTaskAnswered = (taskId) => {
+        const task = tasks.find(t => t.id === taskId);
+        if (!task) return false;
+        return task.inputs.some(input => getInputValue(taskId, input.id));
+    };
+
+    // Navigate to task
+    const goToTask = (index) => {
+        setCurrentTaskIndex(index);
+        setShowMobileNav(false);
+        window.scrollTo(0, 0);
+    };
+
     // Handle calculation
     const handleCalculate = async () => {
-        // Validate inputs
-        const requiredInputIds = currentTask.inputs.map(i => i.id);
-        if (!validateInputs(inputs, requiredInputIds)) {
-            alert('Kérjük, töltse ki az összes mezőt érvényes számokkal!');
+        // Validate all tasks have inputs
+        let allValid = true;
+        let missingTask = null;
+
+        for (const task of tasks) {
+            const taskInputs = {};
+            task.inputs.forEach(input => {
+                taskInputs[input.id] = getInputValue(task.id, input.id);
+            });
+
+            if (!validateInputs(taskInputs, task.inputs.map(i => i.id))) {
+                allValid = false;
+                missingTask = task;
+                break;
+            }
+        }
+
+        if (!allValid && missingTask) {
+            alert(`Kérjük, töltse ki az összes mezőt a(z) "${missingTask.title}" feladatban!`);
+            const index = tasks.findIndex(t => t.id === missingTask.id);
+            if (index !== -1) setCurrentTaskIndex(index);
             return;
         }
 
         setCalculating(true);
 
         try {
-            // Convert input values to numbers
-            const numericInputs = {};
-            for (const [key, value] of Object.entries(inputs)) {
-                numericInputs[key] = parseFloat(value);
+            const allResults = {};
+
+            for (const task of tasks) {
+                const taskInputs = {};
+                task.inputs.forEach(input => {
+                    taskInputs[input.id] = parseFloat(getInputValue(task.id, input.id));
+                });
+
+                const results = calculateResults(taskInputs, task.equations);
+                allResults[task.id] = { inputs: taskInputs, results };
             }
 
-            // Calculate results
-            const results = calculateResults(numericInputs, currentTask.equations);
-
-            // Save results to localStorage (and Supabase if available)
             const resultData = {
-                inputs: numericInputs,
-                results,
+                allResults,
                 calculatedAt: new Date().toISOString()
             };
 
             localStorage.setItem(`results_${customerId}`, JSON.stringify(resultData));
             localStorage.setItem('hasCalculated', 'true');
 
-            // Try to update Supabase
             try {
-                await supabase
-                    .from('customers')
-                    .update({ has_calculated: true })
-                    .eq('id', customerId);
-
-                await supabase
-                    .from('calculation_results')
-                    .insert({
-                        customer_id: customerId,
-                        task_id: currentTask.id,
-                        inputs: numericInputs,
-                        results,
-                        calculated_at: new Date().toISOString()
-                    });
+                await supabase.from('customers').update({ has_calculated: true }).eq('id', customerId);
+                await supabase.from('calculation_results').insert({
+                    customer_id: customerId,
+                    task_id: 'all_tasks',
+                    inputs: inputs,
+                    results: allResults,
+                    calculated_at: new Date().toISOString()
+                });
             } catch (dbError) {
                 console.log('Could not save to Supabase:', dbError);
             }
 
-            // Redirect to results
             router.push('/results');
         } catch (err) {
             console.error('Calculation error:', err);
@@ -161,41 +189,6 @@ export default function CalculatorPage() {
         } finally {
             setCalculating(false);
         }
-    };
-
-    // Render input field inline
-    const renderInputField = (inputConfig) => {
-        return (
-            <input
-                key={inputConfig.id}
-                type="number"
-                step="any"
-                className={`inline-input ${inputs[inputConfig.id] ? 'has-value' : ''}`}
-                placeholder={inputConfig.placeholder || ''}
-                value={inputs[inputConfig.id] || ''}
-                onChange={(e) => handleInputChange(inputConfig.id, e.target.value)}
-                title={`${inputConfig.label} (${inputConfig.unit})`}
-            />
-        );
-    };
-
-    // Render the inputs display with inline input fields
-    const renderInputsDisplay = () => {
-        // Parse the display template and replace placeholders with inputs
-        let display = currentTask.inputsDisplay;
-
-        return (
-            <div className="inputs-display">
-                {currentTask.inputs.map((input, index) => (
-                    <span key={input.id}>
-                        {index > 0 && ', '}
-                        <strong>{input.label}</strong>=
-                        {renderInputField(input)}
-                        <span> {input.unit}</span>
-                    </span>
-                ))}
-            </div>
-        );
     };
 
     if (loading) {
@@ -210,87 +203,162 @@ export default function CalculatorPage() {
     return (
         <>
             <nav className="navbar">
-                <span className="navbar-brand">🔧 Mecha Oldal - Kalkulátor</span>
-                <span style={{ fontSize: '0.9rem', color: '#666' }}>
-                    👤 {customerName}
+                <span className="navbar-brand">Mecha Kalkulátor</span>
+                <span style={{ fontSize: '0.875rem', color: '#6c757d' }}>
+                    {customerName}
                 </span>
             </nav>
 
-            <div className="container">
-                <div className="page-header">
-                    <h1>{currentTask.title}</h1>
-                    <p>Töltse ki az alábbi mezőket a feladat adataival</p>
-                </div>
-
-                <div className="task-card">
-                    <div className="task-header">
-                        <span className="task-number">1 kérdés</span>
-                        <span className="task-status">Folyamatban</span>
+            <div id="page">
+                <div className="container-fluid">
+                    <div id="page-header">
+                        <h1>Statika mérnök hallgatóknak 2025</h1>
                     </div>
 
-                    <div className="task-content">
-                        <p style={{ marginBottom: '1rem', fontSize: '1.1rem' }}>
-                            {currentTask.description}
-                        </p>
+                    <div id="page-content">
+                        <div id="region-main-box">
+                            {/* Question block */}
+                            <div className="que formulas">
+                                <div className="info">
+                                    <h3 className="no"><span className="qno">{currentTaskIndex + 1}</span> kérdés</h3>
+                                    <div className="state">Folyamatban</div>
+                                    <div className="grade">({currentTaskIndex + 1}/{totalTasks} oldal)</div>
+                                </div>
 
-                        {currentTask.image && (
-                            <img
-                                src={currentTask.image}
-                                alt="Feladat ábra"
-                                className="task-image"
-                                onError={(e) => {
-                                    e.target.style.display = 'none';
-                                }}
-                            />
-                        )}
+                                <div className="content">
+                                    <div className="formulation">
+                                        <div className="qtext">
+                                            <p>{currentTask.description}</p>
 
-                        <h4 style={{ marginTop: '1.5rem', marginBottom: '0.5rem' }}>
-                            Az ismert adatok:
-                        </h4>
-                        {renderInputsDisplay()}
+                                            {currentTask.image && (
+                                                <img
+                                                    src={currentTask.image}
+                                                    alt="Feladat ábra"
+                                                    style={{ maxWidth: '450px' }}
+                                                    onError={(e) => e.target.style.display = 'none'}
+                                                />
+                                            )}
 
-                        {currentTask.questions.map((question, qIndex) => (
-                            <div key={question.id} className="question-block">
-                                <h4>{question.text}</h4>
-                                <div className="question-results">
-                                    {question.results.map((result) => (
-                                        <span key={result.id}>
-                                            {result.prefix}
-                                            <input
-                                                type="number"
-                                                step="any"
-                                                className="inline-input"
-                                                placeholder="?"
-                                                disabled
-                                                title="Ez a mező a számítás után lesz kitöltve"
-                                            />
-                                            {result.suffix && <span>{result.suffix}</span>}
-                                            {result.unit && <span style={{ marginLeft: '0.25rem', color: '#666' }}>{result.unit}</span>}
-                                        </span>
-                                    ))}
+                                            <p>
+                                                <strong>Az ismert adatok:</strong><br />
+                                                {currentTask.inputs.map((input, i) => (
+                                                    <span key={input.id}>
+                                                        {i > 0 && ', '}
+                                                        {input.label}=
+                                                        <input
+                                                            type="number"
+                                                            step="any"
+                                                            className={`formulas_number ${getInputValue(currentTask.id, input.id) ? 'has-value' : ''}`}
+                                                            value={getInputValue(currentTask.id, input.id)}
+                                                            onChange={(e) => handleInputChange(currentTask.id, input.id, e.target.value)}
+                                                            placeholder={input.placeholder || ''}
+                                                        />
+                                                        {' '}{input.unit}
+                                                    </span>
+                                                ))}
+                                            </p>
+                                        </div>
+
+                                        {/* Questions with result placeholders */}
+                                        {currentTask.questions.map((question) => (
+                                            <div key={question.id} className="formulaspart">
+                                                <p><strong>{question.text}</strong></p>
+                                                <p>
+                                                    {question.results.map((result) => (
+                                                        <span key={result.id}>
+                                                            {result.prefix}
+                                                            <span className="result-placeholder">?</span>
+                                                            {result.suffix && <span>{result.suffix}</span>}
+                                                            {result.unit && (
+                                                                <span className="formulas_unit" style={{ background: '#f8f9fa', border: '1px solid #ced4da' }}>
+                                                                    {result.unit}
+                                                                </span>
+                                                            )}
+                                                            {' '}
+                                                        </span>
+                                                    ))}
+                                                </p>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
-                        ))}
+
+                            {/* Navigation buttons */}
+                            <div className="submitbtns">
+                                {currentTaskIndex > 0 && (
+                                    <button
+                                        className="btn btn-secondary"
+                                        onClick={() => goToTask(currentTaskIndex - 1)}
+                                        style={{ marginRight: '0.5rem' }}
+                                    >
+                                        Előző oldal
+                                    </button>
+                                )}
+
+                                {currentTaskIndex < totalTasks - 1 ? (
+                                    <button
+                                        className="btn btn-primary"
+                                        onClick={() => goToTask(currentTaskIndex + 1)}
+                                    >
+                                        Következő oldal
+                                    </button>
+                                ) : (
+                                    <button
+                                        className="btn btn-primary"
+                                        onClick={handleCalculate}
+                                        disabled={calculating}
+                                        style={{ background: '#28a745', borderColor: '#28a745' }}
+                                    >
+                                        {calculating ? 'Számítás...' : 'Számítás és befejezés'}
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Navigation sidebar */}
+                        <section className={`blocks-column ${showMobileNav ? 'show' : ''}`}>
+                            <section id="mod_quiz_navblock">
+                                <div className="card-body">
+                                    <h3>Feladat navigáció</h3>
+                                    <div className="qn_buttons">
+                                        {tasks.map((task, index) => (
+                                            <button
+                                                key={task.id}
+                                                className={`qnbutton ${index === currentTaskIndex ? 'thispage' : ''
+                                                    } ${isTaskAnswered(task.id) ? 'answered' : 'notyetanswered'}`}
+                                                onClick={() => goToTask(index)}
+                                                title={`${index + 1}. feladat`}
+                                            >
+                                                {index + 1}.
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <div className="othernav">
+                                        <a href="#" onClick={(e) => { e.preventDefault(); handleCalculate(); }}>
+                                            Számítás befejezése...
+                                        </a>
+                                    </div>
+                                </div>
+                            </section>
+                        </section>
                     </div>
                 </div>
-
-                <button
-                    className="calculate-btn"
-                    onClick={handleCalculate}
-                    disabled={calculating}
-                >
-                    {calculating ? '⏳ Számítás...' : '🧮 Számítás indítása'}
-                </button>
-
-                <p style={{ textAlign: 'center', color: '#666', fontSize: '0.9rem' }}>
-                    ⚠️ Figyelem: A "Számítás" gombra kattintás után már nem módosíthatja az adatokat!
-                </p>
             </div>
 
+            {/* Mobile nav toggle */}
+            <button
+                className="mobile-nav-toggle"
+                onClick={() => setShowMobileNav(!showMobileNav)}
+            >
+                📋 Navigáció
+            </button>
+
+            {/* Autosave indicator */}
             <div className={`autosave-indicator ${saveStatus}`}>
                 {saveStatus === 'saving' && '💾 Mentés...'}
-                {saveStatus === 'saved' && '✅ Mentve'}
-                {saveStatus === 'unsaved' && '⏳ Nem mentett változások'}
+                {saveStatus === 'saved' && '✓ Mentve'}
+                {saveStatus === 'unsaved' && '○ Nem mentett'}
             </div>
         </>
     );

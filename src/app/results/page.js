@@ -11,9 +11,13 @@ export default function ResultsPage() {
     const [customerId, setCustomerId] = useState(null);
     const [customerName, setCustomerName] = useState('');
     const [resultData, setResultData] = useState(null);
-    const [currentTask] = useState(tasksConfig.tasks[0]);
+    const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
+    const [showMobileNav, setShowMobileNav] = useState(false);
 
-    // Check authentication and load results
+    const tasks = tasksConfig.tasks;
+    const currentTask = tasks[currentTaskIndex];
+    const totalTasks = tasks.length;
+
     useEffect(() => {
         const storedId = localStorage.getItem('customerId');
         const storedName = localStorage.getItem('customerName');
@@ -36,32 +40,26 @@ export default function ResultsPage() {
 
     const loadResults = async (id) => {
         try {
-            // First try to load from Supabase
             const { data, error } = await supabase
                 .from('calculation_results')
                 .select('*')
                 .eq('customer_id', id)
-                .eq('task_id', currentTask.id)
                 .single();
 
             if (!error && data) {
-                setResultData({
-                    inputs: data.inputs,
-                    results: data.results,
-                    calculatedAt: data.calculated_at
-                });
+                setResultData(data.results);
             } else {
-                // Fallback to localStorage
                 const localData = localStorage.getItem(`results_${id}`);
                 if (localData) {
-                    setResultData(JSON.parse(localData));
+                    const parsed = JSON.parse(localData);
+                    setResultData(parsed.allResults);
                 }
             }
         } catch (err) {
-            console.log('Loading from Supabase failed, trying localStorage:', err);
             const localData = localStorage.getItem(`results_${id}`);
             if (localData) {
-                setResultData(JSON.parse(localData));
+                const parsed = JSON.parse(localData);
+                setResultData(parsed.allResults);
             }
         } finally {
             setLoading(false);
@@ -75,24 +73,25 @@ export default function ResultsPage() {
         router.push('/');
     };
 
-    // Render result field with highlighted value
-    const renderResultField = (resultId) => {
-        const value = resultData?.results?.[resultId];
-        return (
-            <span className="result-field">
-                {value !== null && value !== undefined ? value : '—'}
-            </span>
-        );
+    const goToTask = (index) => {
+        setCurrentTaskIndex(index);
+        setShowMobileNav(false);
+        window.scrollTo(0, 0);
     };
 
-    // Render input value (readonly display)
-    const renderInputValue = (inputId) => {
-        const value = resultData?.inputs?.[inputId];
-        return (
-            <span className="result-field" style={{ background: '#f5f5f5', borderColor: '#999' }}>
-                {value !== null && value !== undefined ? value : '—'}
-            </span>
-        );
+    const getTaskResult = (taskId) => {
+        return resultData?.[taskId] || resultData?.allResults?.[taskId] || null;
+    };
+
+    const getInputValue = (taskId, inputId) => {
+        const taskResult = getTaskResult(taskId);
+        return taskResult?.inputs?.[inputId] ?? '—';
+    };
+
+    const getResultValue = (taskId, resultId) => {
+        const taskResult = getTaskResult(taskId);
+        const value = taskResult?.results?.[resultId];
+        return value !== null && value !== undefined ? value : '—';
     };
 
     if (loading) {
@@ -104,136 +103,157 @@ export default function ResultsPage() {
         );
     }
 
-    if (!resultData) {
-        return (
-            <div className="container" style={{ textAlign: 'center', marginTop: '3rem' }}>
-                <h2>Nincs elérhető eredmény</h2>
-                <p>Nem találtunk mentett számítási eredményeket.</p>
-                <button
-                    onClick={handleLogout}
-                    style={{
-                        marginTop: '1rem',
-                        padding: '0.75rem 1.5rem',
-                        background: '#1976d2',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '8px',
-                        cursor: 'pointer'
-                    }}
-                >
-                    Vissza a bejelentkezéshez
-                </button>
-            </div>
-        );
-    }
-
-    const calculatedDate = resultData.calculatedAt
-        ? new Date(resultData.calculatedAt).toLocaleString('hu-HU')
-        : 'Ismeretlen';
-
     return (
         <>
             <nav className="navbar">
-                <span className="navbar-brand">🔧 Mecha Oldal - Eredmények</span>
+                <span className="navbar-brand">Mecha Kalkulátor - Eredmények</span>
                 <button
                     onClick={handleLogout}
-                    style={{
-                        background: 'transparent',
-                        border: '1px solid #ddd',
-                        padding: '0.5rem 1rem',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        fontSize: '0.9rem'
-                    }}
+                    className="btn btn-secondary"
+                    style={{ padding: '0.25rem 0.75rem', fontSize: '0.85rem' }}
                 >
                     Kijelentkezés
                 </button>
             </nav>
 
-            <div className="container">
-                <div className="page-header results-header">
-                    <h1>✅ Számítás kész!</h1>
-                    <p>{currentTask.title}</p>
-                    <div className="results-badge">
-                        📅 Számítva: {calculatedDate}
-                    </div>
-                </div>
-
-                <div className="task-card">
-                    <div className="task-header">
-                        <span className="task-number" style={{ background: '#2e7d32' }}>
-                            ✓ Kész
-                        </span>
-                        <span className="task-status">👤 {customerName}</span>
+            <div id="page">
+                <div className="container-fluid">
+                    <div id="page-header" style={{ background: '#d4edda', borderColor: '#28a745' }}>
+                        <h1>✓ Számítás kész - Statika 2025</h1>
                     </div>
 
-                    <div className="task-content">
-                        <p style={{ marginBottom: '1rem', fontSize: '1.1rem' }}>
-                            {currentTask.description}
-                        </p>
+                    <div id="page-content">
+                        <div id="region-main-box">
+                            {/* Question block with results */}
+                            <div className="que formulas">
+                                <div className="info" style={{ background: '#d4edda' }}>
+                                    <h3 className="no"><span className="qno">{currentTaskIndex + 1}</span> kérdés</h3>
+                                    <div className="state" style={{ color: '#155724' }}>✓ Kész</div>
+                                    <div className="grade">({currentTaskIndex + 1}/{totalTasks} oldal)</div>
+                                </div>
 
-                        {currentTask.image && (
-                            <img
-                                src={currentTask.image}
-                                alt="Feladat ábra"
-                                className="task-image"
-                                onError={(e) => {
-                                    e.target.style.display = 'none';
-                                }}
-                            />
-                        )}
+                                <div className="content">
+                                    <div className="formulation">
+                                        <div className="qtext">
+                                            <p>{currentTask.description}</p>
 
-                        <h4 style={{ marginTop: '1.5rem', marginBottom: '0.5rem' }}>
-                            A megadott adatok:
-                        </h4>
-                        <div className="inputs-display">
-                            {currentTask.inputs.map((input, index) => (
-                                <span key={input.id}>
-                                    {index > 0 && ', '}
-                                    <strong>{input.label}</strong>=
-                                    {renderInputValue(input.id)}
-                                    <span> {input.unit}</span>
-                                </span>
-                            ))}
-                        </div>
+                                            {currentTask.image && (
+                                                <img
+                                                    src={currentTask.image}
+                                                    alt="Feladat ábra"
+                                                    style={{ maxWidth: '450px' }}
+                                                    onError={(e) => e.target.style.display = 'none'}
+                                                />
+                                            )}
 
-                        <h4 style={{ marginTop: '1.5rem', marginBottom: '0.5rem', color: '#2e7d32' }}>
-                            📊 Eredmények:
-                        </h4>
+                                            <p>
+                                                <strong>A megadott adatok:</strong><br />
+                                                {currentTask.inputs.map((input, i) => (
+                                                    <span key={input.id}>
+                                                        {i > 0 && ', '}
+                                                        {input.label}=
+                                                        <span className="result-value">
+                                                            {getInputValue(currentTask.id, input.id)}
+                                                        </span>
+                                                        {' '}{input.unit}
+                                                    </span>
+                                                ))}
+                                            </p>
+                                        </div>
 
-                        {currentTask.questions.map((question) => (
-                            <div key={question.id} className="question-block" style={{ borderLeftColor: '#2e7d32' }}>
-                                <h4>{question.text}</h4>
-                                <div className="question-results">
-                                    {question.results.map((result) => (
-                                        <span key={result.id}>
-                                            {result.prefix}
-                                            {renderResultField(result.id)}
-                                            {result.suffix && <span>{result.suffix}</span>}
-                                            {result.unit && <span style={{ marginLeft: '0.25rem', color: '#666' }}>{result.unit}</span>}
-                                        </span>
-                                    ))}
+                                        {/* Questions with calculated results */}
+                                        {currentTask.questions.map((question) => (
+                                            <div key={question.id} className="formulaspart" style={{ borderLeftColor: '#28a745' }}>
+                                                <p><strong>{question.text}</strong></p>
+                                                <p>
+                                                    {question.results.map((result) => (
+                                                        <span key={result.id}>
+                                                            {result.prefix}
+                                                            <span className="result-value">
+                                                                {getResultValue(currentTask.id, result.id)}
+                                                            </span>
+                                                            {result.suffix && <span>{result.suffix}</span>}
+                                                            {result.unit && (
+                                                                <span style={{
+                                                                    display: 'inline-block',
+                                                                    padding: '0.25rem 0.5rem',
+                                                                    marginLeft: '2px',
+                                                                    fontSize: '0.9rem'
+                                                                }}>
+                                                                    {result.unit}
+                                                                </span>
+                                                            )}
+                                                            {' '}
+                                                        </span>
+                                                    ))}
+                                                </p>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
-                        ))}
+
+                            {/* Navigation buttons */}
+                            <div className="submitbtns">
+                                {currentTaskIndex > 0 && (
+                                    <button
+                                        className="btn btn-secondary"
+                                        onClick={() => goToTask(currentTaskIndex - 1)}
+                                        style={{ marginRight: '0.5rem' }}
+                                    >
+                                        Előző oldal
+                                    </button>
+                                )}
+
+                                {currentTaskIndex < totalTasks - 1 && (
+                                    <button
+                                        className="btn btn-primary"
+                                        onClick={() => goToTask(currentTaskIndex + 1)}
+                                    >
+                                        Következő oldal
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Navigation sidebar */}
+                        <section className={`blocks-column ${showMobileNav ? 'show' : ''}`}>
+                            <section id="mod_quiz_navblock">
+                                <div className="card-body">
+                                    <h3>Eredmény navigáció</h3>
+                                    <div className="qn_buttons">
+                                        {tasks.map((task, index) => (
+                                            <button
+                                                key={task.id}
+                                                className={`qnbutton answered ${index === currentTaskIndex ? 'thispage' : ''}`}
+                                                onClick={() => goToTask(index)}
+                                                title={`${index + 1}. feladat`}
+                                                style={{ borderColor: '#28a745' }}
+                                            >
+                                                {index + 1}.
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <div className="othernav">
+                                        <span style={{ color: '#155724', fontSize: '0.875rem' }}>
+                                            ✓ Minden feladat kész
+                                        </span>
+                                    </div>
+                                </div>
+                            </section>
+                        </section>
                     </div>
                 </div>
-
-                <div style={{
-                    textAlign: 'center',
-                    padding: '2rem',
-                    background: '#e8f5e9',
-                    borderRadius: '12px',
-                    marginTop: '1rem'
-                }}>
-                    <p style={{ fontSize: '1.1rem', color: '#2e7d32', marginBottom: '0.5rem' }}>
-                        🎉 A számítás sikeresen megtörtént!
-                    </p>
-                    <p style={{ color: '#666', fontSize: '0.9rem' }}>
-                        Ezt az oldalt bármikor megtekintheti újra a bejelentkezés után.
-                    </p>
-                </div>
             </div>
+
+            {/* Mobile nav toggle */}
+            <button
+                className="mobile-nav-toggle"
+                onClick={() => setShowMobileNav(!showMobileNav)}
+                style={{ background: '#28a745' }}
+            >
+                📋 Navigáció
+            </button>
         </>
     );
 }
