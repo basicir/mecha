@@ -194,7 +194,8 @@ export default function CalculatePage() {
                             borderRadius: '8px',
                             borderLeft: '4px solid #f59e0b',
                             fontSize: '0.875rem',
-                            lineHeight: '1.5'
+                            lineHeight: '1.5',
+                            whiteSpace: 'pre-wrap'
                         }}>
                             <strong>💡 Hint:</strong> {task.hint}
                         </div>
