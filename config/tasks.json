@@ -1,4 +1,51 @@
 {
-    "tasks": [],
-    "lastUpdated": "2025-12-09T14:38:00.000Z"
+  "tasks": [
+    {
+      "id": "task-1",
+      "name": "Egy prizmatikus rúd keresztmetszete aa élhosszúságú négyzet",
+      "inputVariables": [],
+      "outputVariables": [],
+      "equations": [],
+      "showingText": "Egy prizmatikus rúd keresztmetszete aa élhosszúságú négyzet. A rúd terheletlen hossza l0l0. A rúd anyaga alumínium, amelynek rugalmassági együtthatója E=E= 69 GPa. A rúd egyik végét rögzítjük, a másik végét F=F= 4.1 kN nagyságú, tengelyirányú húzóerővel terheljük. A rúd megnyúlása Δl=Δl= 1.51188 mm. A rúd egy keresztmetszetében ébredő normálfeszültség σx=σx= 24.26036 MPa. Adja meg a rúd terheletlen hosszát, és a keresztmetszet élhosszúságát!\n l0=l0= Válasz a következőre: 1Szám4300.007 mm a=a= Válasz a következőre: 2Szám13 mm",
+      "outputPlaceholders": [],
+      "images": []
+    },
+    {
+      "id": "task-2",
+      "name": "Határozza meg az ábrán látható síkidom CC centroidjának hely...",
+      "inputVariables": [],
+      "outputVariables": [],
+      "equations": [],
+      "showingText": "Határozza meg az ábrán látható síkidom CC centroidjának helyvektorát a megadott koordináta-rendszerben, ha ismertek az alábbi méretek.\n\n\n\n\na=a= 104 mm, b=b= 38 mm, d=d= 380 mm, s=s= 122 mm, h=h= 45 mm.\n\n\n\n\n r⃗ C=xCe⃗ x+yCe⃗ yr→C=xCe→x+yCe→y mm\n\n\n\nxC=xC= Válasz a következőre: 1Szám190.5777 mm yC=yC= Válasz a következőre: 2Szám194.5492 mm",
+      "outputPlaceholders": [],
+      "images": [
+        "/examples/img_2.png"
+      ]
+    },
+    {
+      "id": "task-3",
+      "name": "Az ábrán látható merev rúd tartós egyensúlyban van",
+      "inputVariables": [],
+      "outputVariables": [],
+      "equations": [],
+      "showingText": "Az ábrán látható merev rúd tartós egyensúlyban van. A koordináta-rendszer origója a rúd baloldali végével esik egybe. Az ismert adatok:\n\n\n\na=a= 4.3 m, b=b= 2.6 m, c=c= 5.1 m, \n\n|F1|=|F1|= 10 kN, |F2|=|F2|= 7.2 kN, |F3|=|F3|= 6.8 kN, \n\nα=α= 35°.\n\n\n\n \n    Adja meg az A csukló által kifejtett kényszererőt!\n\n\n\nF⃗ A=F→A= 1 válaszmező a 1. részhezSzám1.3915 e⃗ x+e→x+ 2 válaszmező a 1. részhezSzám0.6204 e⃗ ye→y kN \n    Adja meg B görgő által kifejtett kényszererőt!\n\n\n\nF⃗ B=F→B= 1 válaszmező a 2. részhezSzám0 e⃗ x+e→x+ 2 válaszmező a 2. részhezSzám-2.0846 e⃗ ye→y kN \n    Adja meg a normálerőt a rúd keresztmetszetében az alábbi helyeken!\n\n\n\nN(N( 3.01 m)=)= Válasz a következőre: 3Szám-1.3915 kN N(N( 8.43 m)=)= Válasz a következőre: 4Szám6.80 kN \n    Adja meg a nyíróerőt a rúd keresztmetszetében az alábbi helyeken!\n\n\n\nT(T( 3.01 m)=)= Válasz a következőre: 5Szám0.6204 kN T(T( 8.43 m)=)= Válasz a következőre: 6Szám2.0846 kN \n    Adja meg a z tengelyre vonatkozó hajlítónyomatékot a rúd keresztmetszetében az alábbi helyeken!\n\n\n\n\n    Mhz(Mhz(\n\n3.01 m)=)= Válasz a következőre: 7Szám-1.86755 kNm \n    Mhz(Mhz(\n\n8.43 m)=)= Válasz a következőre: 8Szám7.4423 kNm \n    Hol található a veszélyes keresztmetszet?\n\n\n\n\n    xVK=xVK=\n\nVálasz a következőre: 9Szám6.9 m \n    Adja meg a hajlítónyomatékot a veszélyes keresztmetszetben! Ha szakadás van a veszélyes keresztmetszet helyén, akkor a nagyobb abszolút értékű hajlítónyomatékot adja meg.\n    \n\n    Mhz,VK=Mhz,VK=\n\nVálasz a következőre: 10Szám10.6318 kNm",
+      "outputPlaceholders": [],
+      "images": [
+        "/examples/img_3.png"
+      ]
+    },
+    {
+      "id": "task-4",
+      "name": "Az ábrán látható merev rúd tartós egyensúlyban van",
+      "inputVariables": [],
+      "outputVariables": [],
+      "equations": [],
+      "showingText": "Az ábrán látható merev rúd tartós egyensúlyban van. A koordináta-rendszer origója a rúd baloldali végével esik egybe. Az ismert adatok:\n\n\n\na=a= 4.3 m, b=b= 1 m, c=c= 1.1 m, \n\n|q1|=|q1|= 6.9 kN/m, |M2|=|M2|= 16 kNm, |F3|=|F3|= 27.44226 kN, \n\nα=α= 47°.\n\n\n \n    Adja meg az A befogás által kifejtett kényszererőt!\n\n\n\nF⃗ A=F→A= 1 válaszmező a 1. részhezSzám-18.7156 e⃗ x+e→x+ 2 válaszmező a 1. részhezSzám9.6 e⃗ ye→y kN \n    Adja meg az A befogás által kifejtett nyomatékot!\n\n\n\nM⃗ A=M→A= Válasz a következőre: 2Szám-48.6575 e⃗ ze→z kNm \n    Adja meg a normálerőt a rúd keresztmetszetében az alábbi helyeken!\n\n\n\nN(N( 3.01 m)=)= Válasz a következőre: 3Szám18.71558 kN N(N( 5.85 m)=)= Válasz a következőre: 4Szám18.71558 kN \n    Adja meg a nyíróerőt a rúd keresztmetszetében az alábbi helyeken!\n\n\n\nT(T( 3.01 m)=)= Válasz a következőre: 5Szám-11.169 kN T(T( 5.85 m)=)= Válasz a következőre: 6Szám20.07 kN \n    Adja meg a z tengelyre vonatkozó hajlítónyomatékot a rúd keresztmetszetében az alábbi helyeken!\n\n\n\n\n    Mhz(Mhz(\n\n3.01 m)=)= Válasz a következőre: 7Szám-73.734 kNm \n    Mhz(Mhz(\n\n5.85 m)=)= Válasz a következőre: 8Szám-11.0385 kNm \n    Hol található a veszélyes keresztmetszet?\n\n\n\n\n    xVK=xVK=\n\nVálasz a következőre: 9Szám5.3 m \n    Adja meg a hajlítónyomatékot a veszélyes keresztmetszetben! Ha szakadás van a veszélyes keresztmetszet helyén, akkor a nagyobb abszolút értékű hajlítónyomatékot adja meg.\n    \n\n    Mhz,VK=Mhz,VK=\n\nVálasz a következőre: 10Szám-6.077 kNm",
+      "outputPlaceholders": [],
+      "images": [
+        "/examples/img_4.png"
+      ]
+    }
+  ],
+  "lastUpdated": "2025-12-09T14:47:08.794Z"
 }

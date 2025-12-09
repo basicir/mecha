@@ -4,8 +4,8 @@
  */
 
 import { loadConfigFromSupabase, saveConfig } from '../src/lib/taskParser';
+import { loadAllExampleTasks } from '../src/lib/htmlParser';
 import * as path from 'path';
-import * as fs from 'fs';
 
 async function main() {
     console.log('🔄 Syncing tasks config from Supabase...');
@@ -13,21 +13,38 @@ async function main() {
     try {
         const config = await loadConfigFromSupabase();
 
-        if (!config) {
-            console.warn('⚠️  No config found in Supabase');
+        if (!config || config.tasks.length === 0) {
+            console.warn('⚠️  No config found in Supabase or config is empty');
+            console.log('📖 Loading tasks from public/examples/page.html instead...');
 
-            // Create empty config if it doesn't exist
-            const configPath = path.join(process.cwd(), 'config', 'tasks.json');
-            if (!fs.existsSync(configPath)) {
+            // Load tasks from HTML examples
+            const tasksFromHTML = loadAllExampleTasks();
+
+            if (tasksFromHTML.length > 0) {
+                const newConfig = {
+                    tasks: tasksFromHTML,
+                    lastUpdated: new Date().toISOString()
+                };
+
+                saveConfig(newConfig);
+                console.log(`✅ Loaded ${tasksFromHTML.length} tasks from HTML examples`);
+                console.log('💾 Saved to local tasks.json');
+
+                tasksFromHTML.forEach((task, i) => {
+                    console.log(`   Task ${i + 1}: ${task.name}`);
+                });
+            } else {
+                console.warn('⚠️  No tasks found in HTML examples either');
+                // Create minimal empty config
                 const emptyConfig = {
                     tasks: [],
                     lastUpdated: new Date().toISOString()
                 };
                 saveConfig(emptyConfig);
                 console.log('📝 Created empty tasks.json');
-            } else {
-                console.log('📝 Using existing local tasks.json');
             }
+
+            console.log('\n✨ Sync complete!');
             process.exit(0);
         }
 

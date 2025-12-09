@@ -33,7 +33,9 @@ export function parseExampleHTML(htmlPath: string): TaskConfig[] {
         imgElements.forEach((img) => {
             const src = img.getAttribute('src');
             if (src && !src.includes('img_0') && !src.includes('img_1.jpg')) {
-                images.push(src);
+                // Convert relative paths to /examples/...
+                const imagePath = src.startsWith('/') ? src : `/examples/${src}`;
+                images.push(imagePath);
             }
         });
 
@@ -51,9 +53,9 @@ export function parseExampleHTML(htmlPath: string): TaskConfig[] {
         const task: TaskConfig = {
             id: taskId,
             name: taskName,
-            inputVariables: [], // Empty - user adds manually
+            inputVariables: [], // Empty - user adds manually in admin
             outputVariables: [],
-            equations: [], // Empty - user adds manually
+            equations: [], // Empty - user adds manually in admin
             showingText: questionText, // Full text, no limit
             outputPlaceholders: [],
             images: [...new Set(images)],
@@ -66,35 +68,24 @@ export function parseExampleHTML(htmlPath: string): TaskConfig[] {
 }
 
 /**
- * Scans the examples folder and parses all HTML files
+ * Loads tasks from public/examples/page.html
  */
 export function loadAllExampleTasks(): TaskConfig[] {
-    const examplesDir = path.join(process.cwd(), 'examples');
+    // Load from public/examples/page.html
+    const htmlPath = path.join(process.cwd(), 'public', 'examples', 'page.html');
 
-    if (!fs.existsSync(examplesDir)) {
-        console.warn('Examples directory not found');
+    if (!fs.existsSync(htmlPath)) {
+        console.warn('⚠️  public/examples/page.html not found - no tasks loaded');
         return [];
     }
 
-    const allTasks: TaskConfig[] = [];
-    const entries = fs.readdirSync(examplesDir, { withFileTypes: true });
-
-    for (const entry of entries) {
-        if (entry.isDirectory()) {
-            const htmlPath = path.join(examplesDir, entry.name, 'page.html');
-            if (fs.existsSync(htmlPath)) {
-                try {
-                    const tasks = parseExampleHTML(htmlPath);
-                    tasks.forEach((task, i) => {
-                        task.id = `${entry.name}-task-${i + 1}`;
-                    });
-                    allTasks.push(...tasks);
-                } catch (error) {
-                    console.error(`Error parsing ${htmlPath}:`, error);
-                }
-            }
-        }
+    try {
+        console.log('📖 Loading tasks from public/examples/page.html...');
+        const tasks = parseExampleHTML(htmlPath);
+        console.log(`✅ Loaded ${tasks.length} tasks from HTML`);
+        return tasks;
+    } catch (error) {
+        console.error(`❌ Error parsing ${htmlPath}:`, error);
+        return [];
     }
-
-    return allTasks;
 }
