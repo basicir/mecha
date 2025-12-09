@@ -1,8 +1,36 @@
-# Supabase Setup Guide for Task Manager
+# Supabase Setup Guide - Task Configuration Manager
 
 ## Overview
 
-This application now stores task configurations in Supabase, ensuring they're synced during build time.
+Task configurations are managed through the `/admin` page and stored in Supabase. During build, the latest config is fetched from Supabase and used to generate `tasks.json` on the server.
+
+## Correct Workflow
+
+```
+┌─────────────┐
+│ Admin Page  │  Configure tasks via UI
+│  /admin     │
+└──────┬──────┘
+       │ Click 💾 Save
+       ▼
+┌─────────────┐
+│  Supabase   │  Single source of truth
+│ tasks_config│
+└──────┬──────┘
+       │
+       │ During build (npm run build)
+       ▼
+┌─────────────┐
+│ tasks.json  │  Generated on server
+│  (server)   │
+└──────┬──────┘
+       │
+       ▼
+┌─────────────┐
+│Calculator & │  Read from tasks.json
+│Results Pages│
+└─────────────┘
+```
 
 ## Setup Steps
 
@@ -10,17 +38,17 @@ This application now stores task configurations in Supabase, ensuring they're sy
 
 1. Go to [supabase.com](https://supabase.com)
 2. Create a new project
-3. Note your project URL and keys
+3. Note your **Project URL** and **API Keys**
 
 ### 2. Set Environment Variables
 
-Create a `.env.local` file in the project root:
+**Local Development** - Create `.env.local`:
 
 ```bash
 cp .env.example .env.local
 ```
 
-Fill in your Supabase credentials:
+Fill in:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
@@ -28,85 +56,165 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
 ```
 
-**Important for Vercel deployment:**
-Add these same environment variables to your Vercel project settings.
+**Vercel/Production** - Add these same variables in Vercel project settings:
+- Settings → Environment Variables → Add each variable
 
 ### 3. Run Database Migration
 
-Run the migration to create the `tasks_config` table:
+Create the `tasks_config` table:
 
+**Option A: Using Supabase SQL Editor**
+1. Go to your Supabase project → SQL Editor
+2. Copy and paste contents of `supabase/migrations/20250101000000_create_tasks_config.sql`
+3. Click "Run"
+
+**Option B: Using Supabase CLI** (if installed)
 ```bash
-# If using Supabase CLI
 supabase migration up
-
-# Or manually run the SQL in supabase/migrations/20250101000000_create_tasks_config.sql
-# in the Supabase SQL Editor
 ```
 
-### 4. Initial Data Upload
+### 4. Initial Upload to Supabase
 
-Parse your HTML file and upload to both local and Supabase:
+You have to upload your current `tasks.json` to Supabase **once**:
 
 ```bash
-# 1. Parse HTML and create tasks.json
-npm run parse-html
-
-# 2. The admin page will automatically upload to Supabase when you click Save
+npx tsx scripts/uploadInitialConfig.ts
 ```
 
-## Workflow
+This script:
+- Reads current `config/tasks.json`
+- Uploads it to Supabase
+- Only needs to run **once**
 
-### Updating Tasks
+After this, **always use the `/admin` page** to manage configurations.
 
-1. Edit the `Create Next App.html` file with your task data
-2. Run `npm run parse-html` to update `tasks.json`
-3. Go to `/admin` page and click **💾 Save**
-4. This saves to both local file AND Supabase
+## Daily Workflow
 
-### Build Process
+### Making Changes to Tasks
 
-When you run `npm run build`:
+1. Open `/admin` page in browser
+2. Edit tasks:
+   - Add/remove input variables
+   - Add/remove equations
+   - Edit formulas
+   - Update showing text
+3. Click **💾 Save** button
+4. ✅ Saved to Supabase automatically
 
-1. **Pre-build step** runs automatically (`scripts/syncFromSupabase.ts`)
-2. Fetches latest config from Supabase
-3. Updates local `config/tasks.json`
-4. Continues with normal build
+### Deploying Changes
 
-This ensures production always has the latest tasks from Supabase.
+1. Push any code changes to GitHub
+2. Vercel automatically builds
+3. **During build:**
+   - `prebuild` script runs (`scripts/syncFromSupabase.ts`)
+   - Fetches latest config from Supabase
+   - Updates server's `tasks.json`
+4. ✅ Production has latest configuration
+
+**No manual steps needed** - just push to GitHub!
 
 ## Database Schema
 
 ```sql
-tasks_config
-- id: UUID (primary key)
-- config_data: JSONB (stores the entire configuration)
-- version: INTEGER (increments on each save)
-- created_at: TIMESTAMP
-- updated_at: TIMESTAMP (auto-updated via trigger)
+CREATE TABLE tasks_config (
+    id UUID PRIMARY KEY,
+    config_data JSONB NOT NULL,      -- Full task configuration
+    version INTEGER DEFAULT 1,        -- Auto-increments on save
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()  -- Auto-updated
+);
+```
+
+The `config_data` JSONB field stores the complete configuration in this format:
+
+```json
+{
+  "tasks": [...],
+  "lastUpdated": "2025-12-09T14:00:00Z"
+}
 ```
 
 ## Scripts
 
-- `npm run parse-html` - Parse Create Next App.html to tasks.json
-- `npm run build` - Build (automatically syncs from Supabase first)
-- `npx tsx scripts/syncFromSupabase.ts` - Manually sync from Supabase
+| Script | Purpose | Usage |
+|--------|---------|-------|
+| `uploadInitialConfig.ts` | **ONE-TIME** - Upload existing tasks.json to Supabase | `npx tsx scripts/uploadInitialConfig.ts` |
+| `syncFromSupabase.ts` | Fetch from Supabase → update local tasks.json | Runs automatically during `npm run build` |
+| `parseHtmlSimple.ts` | *(Legacy)* Parse HTML snapshot | Not needed in normal workflow |
 
 ## Troubleshooting
 
-### Build fails to fetch from Supabase
+### "Admin Save Failed"
 
-The build will continue with existing `tasks.json` if Supabase fetch fails. Check:
-- Environment variables are set in Vercel
-- Supabase service is accessible
-- Migration has been run
+**Check:**
+1. Environment variables are set correctly in `.env.local`
+2. `SUPABASE_SERVICE_ROLE_KEY` is present (not just anon key)
+3. Database migration has been run
+4. Table `tasks_config` exists in Supabase
 
-### Admin save fails
+**How to verify:**
+```bash
+# Check environment variables
+echo $NEXT_PUBLIC_SUPABASE_URL
+echo $SUPABASE_SERVICE_ROLE_KEY
 
-Check:
-- `SUPABASE_SERVICE_ROLE_KEY` is set
-- Database migration has been run
-- Table `tasks_config` exists
+# In Supabase: go to Table Editor and look for tasks_config
+```
 
-### Local vs Supabase mismatch
+### "Build Failed to Fetch from Supabase"
 
-Always use admin page Save button to ensure both are in sync. Supabase is the source of truth during builds.
+The build will **continue** with existing `tasks.json` if Supabase fetch fails.
+
+**In Vercel:**
+1. Go to Project Settings → Environment Variables
+2. Verify all 3 variables are set:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+3. Redeploy
+
+### "Config Seems Out of Date"
+
+Supabase is the source of truth. If local and production differ:
+
+1. Make changes on `/admin` page
+2. Click **💾 Save** (uploads to Supabase)
+3. Redeploy on Vercel (fetches from Supabase)
+
+**Never edit `tasks.json` manually** - always use admin page!
+
+## File Structure
+
+```
+mecha/
+├── config/
+│   └── tasks.json              # Generated from Supabase during build
+├── scripts/
+│   ├── uploadInitialConfig.ts  # ONE-TIME: Upload to Supabase
+│   └── syncFromSupabase.ts     # Runs on every build
+├── src/
+│   ├── app/
+│   │   ├── admin/              # Admin UI for managing tasks
+│   │   └── api/
+│   │       └── admin/
+│   │           └── config/     # API: Save to Supabase
+│   └── lib/
+│       └── taskParser.ts       # Supabase read/write functions
+└── supabase/
+    └── migrations/
+        └── 20250101000000_create_tasks_config.sql
+```
+
+## FAQ
+
+**Q: Where do I add new tasks?**  
+A: Use the `/admin` page in your browser. Click "+ Add Task" if you add that feature, or manually add via the admin UI.
+
+**Q: Can I edit tasks.json directly?**  
+A: No! Changes to `tasks.json` will be overwritten on next build. Always use `/admin` page.
+
+**Q: What if Supabase is down during build?**  
+A: Build continues with existing `tasks.json` file. You'll see a warning in build logs.
+
+**Q: How do I see what's in Supabase?**  
+A: Go to Supabase → Table Editor → tasks_config table. You'll see the JSONB data and version numbers.
