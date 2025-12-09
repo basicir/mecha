@@ -86,7 +86,7 @@ function ShowingTextEditor({ value, onChange, outputVariables }: ShowingTextEdit
                         📤 Output beszúrása:
                     </span>
                     <div style={{ display: 'inline-flex', flexWrap: 'wrap', gap: '0.25rem' }}>
-                        {outputVariables.map((varName) => (
+                        {[...outputVariables].reverse().map((varName) => (
                             <button
                                 key={varName}
                                 type="button"
@@ -295,6 +295,14 @@ export default function AdminPage() {
                 return { ...task, inputVariables: [{ name: '', label: '', unit: '' }, ...task.inputVariables] };
             }),
         });
+
+        // Auto-focus the new input field
+        setTimeout(() => {
+            const inputs = document.querySelectorAll('input.input[style*="monospace"]');
+            if (inputs.length > 0) {
+                (inputs[0] as HTMLInputElement).focus();
+            }
+        }, 100);
     };
 
     const updateInputVariableName = (taskId: string, varIndex: number, name: string) => {
