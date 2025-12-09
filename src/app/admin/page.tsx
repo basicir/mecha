@@ -296,11 +296,11 @@ export default function AdminPage() {
             }),
         });
 
-        // Auto-focus the new input field
+        // Auto-focus the new input field for this specific task
         setTimeout(() => {
-            const inputs = document.querySelectorAll('input.input[style*="monospace"]');
-            if (inputs.length > 0) {
-                (inputs[0] as HTMLInputElement).focus();
+            const input = document.querySelector(`input.input[data-task-id="${taskId}"][data-var-index="0"]`);
+            if (input) {
+                (input as HTMLInputElement).focus();
             }
         }, 100);
     };
@@ -411,7 +411,7 @@ export default function AdminPage() {
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                             {task.inputVariables.map((v, varIndex) => (
                                 <div key={varIndex} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0.5rem', borderRadius: '8px' }}>
-                                    <input type="text" className="input" style={{ width: '120px', fontFamily: 'monospace' }} value={v.name} onChange={(e) => updateInputVariableName(task.id, varIndex, e.target.value)} placeholder="var_name" />
+                                    <input type="text" className="input" style={{ width: '120px', fontFamily: 'monospace' }} value={v.name} onChange={(e) => updateInputVariableName(task.id, varIndex, e.target.value)} placeholder="var_name" data-task-id={task.id} data-var-index={varIndex} />
                                     <button onClick={() => removeInputVariable(task.id, varIndex)} style={{ background: 'var(--error)', color: 'white', border: 'none', borderRadius: '4px', padding: '0.4rem 0.6rem', cursor: 'pointer' }}>✕</button>
                                 </div>
                             ))}
