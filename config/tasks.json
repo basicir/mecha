@@ -1,0 +1,163 @@
+{
+    "tasks": [
+        {
+            "id": "page_files 3-task-1",
+            "name": "Egy prizmatikus rúd keresztmetszete a élhosszúságú négyzet...",
+            "inputVariables": [
+                {
+                    "name": "E",
+                    "label": "E",
+                    "unit": ""
+                },
+                {
+                    "name": "F",
+                    "label": "F",
+                    "unit": ""
+                },
+                {
+                    "name": "delta_l",
+                    "label": "delta_l",
+                    "unit": ""
+                },
+                {
+                    "name": "sigma_x",
+                    "label": "sigma_x",
+                    "unit": ""
+                }
+            ],
+            "outputVariables": [],
+            "equations": [
+                {
+                    "outputVariable": "l0",
+                    "formula": "delta_l*(E*1000/sigma_x)"
+                },
+                {
+                    "outputVariable": "a",
+                    "formula": "GYÖK(F*1000/sigma_x)"
+                }
+            ],
+            "showingText": "l0= {{l0}} mm \na={{a}} mm",
+            "outputPlaceholders": [],
+            "images": []
+        },
+        {
+            "id": "page_files 3-task-2",
+            "name": "Határozza meg az ábrán látható síkidom C centroidjának helyvektorát...",
+            "inputVariables": [
+                {
+                    "name": "a",
+                    "label": "a",
+                    "unit": ""
+                },
+                {
+                    "name": "b",
+                    "label": "b",
+                    "unit": ""
+                },
+                {
+                    "name": "d",
+                    "label": "d",
+                    "unit": ""
+                },
+                {
+                    "name": "s",
+                    "label": "s",
+                    "unit": ""
+                },
+                {
+                    "name": "h",
+                    "label": "h",
+                    "unit": ""
+                }
+            ],
+            "outputVariables": [],
+            "equations": [
+                {
+                    "outputVariable": "x_c",
+                    "formula": "(d^2*PI()/4*(d/2)-a*b*(s+(a/2)))/(d^2*PI()/4-a*b)"
+                },
+                {
+                    "outputVariable": "y_c",
+                    "formula": "((d^2*PI()/4)*(d/2)-(a*b)*(h+(b/2)))/((d^2*PI()/4)-(a*b))"
+                }
+            ],
+            "showingText": "r_C=x_C ex+y_C ey mm\n\n\n\nxC={{x_c}} mm \nyC={{y_c}} mm",
+            "outputPlaceholders": [],
+            "images": []
+        },
+        {
+            "id": "page_files 3-task-3",
+            "name": "Az ábrán látható merev rúd tartós egyensúlyban van....",
+            "inputVariables": [
+                {
+                    "name": "a",
+                    "label": "a",
+                    "unit": ""
+                },
+                {
+                    "name": "b",
+                    "label": "b",
+                    "unit": ""
+                },
+                {
+                    "name": "c",
+                    "label": "c",
+                    "unit": ""
+                },
+                {
+                    "name": "F1",
+                    "label": "F1",
+                    "unit": ""
+                },
+                {
+                    "name": "F2",
+                    "label": "F2",
+                    "unit": ""
+                },
+                {
+                    "name": "F3",
+                    "label": "F3",
+                    "unit": ""
+                },
+                {
+                    "name": "alfa",
+                    "label": "alfa",
+                    "unit": ""
+                }
+            ],
+            "outputVariables": [],
+            "equations": [
+                {
+                    "outputVariable": "FAx",
+                    "formula": "(COS(RADIÁN(alfa))*F1)-F3"
+                },
+                {
+                    "outputVariable": "FAy",
+                    "formula": "(SIN(RADIÁN(alfa))*F1*(b+c)-F2*c)/(a+b+c)"
+                },
+                {
+                    "outputVariable": "FBx",
+                    "formula": "0"
+                },
+                {
+                    "outputVariable": "FBy",
+                    "formula": "0"
+                }
+            ],
+            "showingText": "Adja meg az A csukló által kifejtett kényszererőt!\n\nFA={{FAx}} ex+{{FAy}} ey kN \n\nAdja meg B görgő által kifejtett kényszererőt!\n\nFB={{FBx}} ex+{{FBy}}ey kN",
+            "outputPlaceholders": [],
+            "images": []
+        },
+        {
+            "id": "page_files 3-task-4",
+            "name": "Az ábrán látható merev rúd tartós egyensúlyban van",
+            "inputVariables": [],
+            "outputVariables": [],
+            "equations": [],
+            "showingText": "Az ábrán látható merev rúd tartós egyensúlyban van. A koordináta-rendszer origója a rúd baloldali végével esik egybe.",
+            "outputPlaceholders": [],
+            "images": []
+        }
+    ],
+    "lastUpdated": "2025-12-09T01:00:00.000Z"
+}
