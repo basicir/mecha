@@ -54,7 +54,7 @@ export function parseExampleHTML(htmlPath: string): TaskConfig[] {
             inputVariables: [], // Empty - user adds manually
             outputVariables: [],
             equations: [], // Empty - user adds manually
-            showingText: questionText.substring(0, 500),
+            showingText: questionText, // Full text, no limit
             outputPlaceholders: [],
             images: [...new Set(images)],
         };
