@@ -2,6 +2,7 @@ import type { TaskConfig, ConfigData } from '@/types';
 import fs from 'fs';
 import path from 'path';
 import { loadAllExampleTasks } from './htmlParser';
+import { getServiceSupabase } from './supabase';
 
 const CONFIG_PATH = path.join(process.cwd(), 'config', 'tasks.json');
 
@@ -16,6 +17,86 @@ export function saveConfig(config: ConfigData): void {
     }
 
     fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+}
+
+/**
+ * Saves configuration to Supabase
+ */
+export async function saveConfigToSupabase(config: ConfigData): Promise<void> {
+    try {
+        const supabase = getServiceSupabase();
+
+        // Get the latest config entry (there should only be one)
+        const { data: existingConfigs, error: fetchError } = await supabase
+            .from('tasks_config')
+            .select('*')
+            .order('updated_at', { ascending: false })
+            .limit(1);
+
+        if (fetchError) throw fetchError;
+
+        const version = existingConfigs && existingConfigs.length > 0
+            ? (existingConfigs[0].version || 0) + 1
+            : 1;
+
+        if (existingConfigs && existingConfigs.length > 0) {
+            // Update existing config
+            const { error: updateError } = await supabase
+                .from('tasks_config')
+                .update({
+                    config_data: config as any,
+                    version: version
+                })
+                .eq('id', existingConfigs[0].id);
+
+            if (updateError) throw updateError;
+        } else {
+            // Insert new config
+            const { error: insertError } = await supabase
+                .from('tasks_config')
+                .insert({
+                    config_data: config as any,
+                    version: version
+                });
+
+            if (insertError) throw insertError;
+        }
+
+        console.log('✅ Config saved to Supabase, version:', version);
+    } catch (error) {
+        console.error('❌ Error saving config to Supabase:', error);
+        throw error;
+    }
+}
+
+/**
+ * Loads configuration from Supabase
+ */
+export async function loadConfigFromSupabase(): Promise<ConfigData | null> {
+    try {
+        const supabase = getServiceSupabase();
+
+        const { data, error } = await supabase
+            .from('tasks_config')
+            .select('config_data')
+            .order('updated_at', { ascending: false })
+            .limit(1)
+            .single();
+
+        if (error) {
+            console.error('Error loading config from Supabase:', error);
+            return null;
+        }
+
+        if (data && data.config_data) {
+            return data.config_data as ConfigData;
+        }
+
+        return null;
+    } catch (error) {
+        console.error('Error loading config from Supabase:', error);
+        return null;
+    }
 }
 
 /**
@@ -65,3 +146,4 @@ export function refreshConfigFromExamples(): ConfigData {
 
     return config;
 }
+

@@ -4,9 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "npx tsx scripts/syncFromSupabase.ts",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "parse-html": "npx tsx scripts/parseHtmlSimple.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.87.0",
