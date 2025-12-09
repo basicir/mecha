@@ -292,7 +292,7 @@ export default function AdminPage() {
             ...config,
             tasks: config.tasks.map((task) => {
                 if (task.id !== taskId) return task;
-                return { ...task, inputVariables: [...task.inputVariables, { name: '', label: '', unit: '' }] };
+                return { ...task, inputVariables: [{ name: '', label: '', unit: '' }, ...task.inputVariables] };
             }),
         });
     };
@@ -327,7 +327,7 @@ export default function AdminPage() {
             ...config,
             tasks: config.tasks.map((task) => {
                 if (task.id !== taskId) return task;
-                return { ...task, equations: [...task.equations, { outputVariable: '', formula: '' }] };
+                return { ...task, equations: [{ outputVariable: '', formula: '' }, ...task.equations] };
             }),
         });
     };
