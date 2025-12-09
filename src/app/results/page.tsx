@@ -90,7 +90,12 @@ export default function ResultsPage() {
                     <div
                         key={task.id}
                         className="card fade-in"
-                        style={{ marginBottom: '1.5rem', animationDelay: `${index * 0.1}s` }}
+                        style={{
+                            marginBottom: '2rem',
+                            padding: '1.25rem',
+                            border: '1px solid var(--border-color)',
+                            animationDelay: `${index * 0.1}s`
+                        }}
                     >
                         <h2 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '1rem' }}>
                             {index + 1}. {task.name}
