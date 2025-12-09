@@ -38,7 +38,9 @@
             ],
             "showingText": "l0= {{l0}} mm \na={{a}} mm",
             "outputPlaceholders": [],
-            "images": []
+            "images": [
+                "/images/img_2.png"
+            ]
         },
         {
             "id": "page_files 3-task-2",
@@ -83,7 +85,9 @@
             ],
             "showingText": "r_C=x_C ex+y_C ey mm\n\n\n\nxC={{x_c}} mm \nyC={{y_c}} mm",
             "outputPlaceholders": [],
-            "images": []
+            "images": [
+                "/images/img_2.png"
+            ]
         },
         {
             "id": "page_files 3-task-3",
@@ -146,7 +150,9 @@
             ],
             "showingText": "Adja meg az A csukló által kifejtett kényszererőt!\n\nFA={{FAx}} ex+{{FAy}} ey kN \n\nAdja meg B görgő által kifejtett kényszererőt!\n\nFB={{FBx}} ex+{{FBy}}ey kN",
             "outputPlaceholders": [],
-            "images": []
+            "images": [
+                "/images/img_3.png"
+            ]
         },
         {
             "id": "page_files 3-task-4",
@@ -156,7 +162,9 @@
             "equations": [],
             "showingText": "Az ábrán látható merev rúd tartós egyensúlyban van. A koordináta-rendszer origója a rúd baloldali végével esik egybe.",
             "outputPlaceholders": [],
-            "images": []
+            "images": [
+                "/images/img_4.png"
+            ]
         }
     ],
     "lastUpdated": "2025-12-09T01:00:00.000Z"
