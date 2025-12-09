@@ -5,6 +5,7 @@
 
 import { loadConfigFromSupabase, saveConfig } from '../src/lib/taskParser';
 import * as path from 'path';
+import * as fs from 'fs';
 
 async function main() {
     console.log('🔄 Syncing tasks config from Supabase...');
@@ -13,7 +14,20 @@ async function main() {
         const config = await loadConfigFromSupabase();
 
         if (!config) {
-            console.warn('⚠️  No config found in Supabase, using local tasks.json');
+            console.warn('⚠️  No config found in Supabase');
+
+            // Create empty config if it doesn't exist
+            const configPath = path.join(process.cwd(), 'config', 'tasks.json');
+            if (!fs.existsSync(configPath)) {
+                const emptyConfig = {
+                    tasks: [],
+                    lastUpdated: new Date().toISOString()
+                };
+                saveConfig(emptyConfig);
+                console.log('📝 Created empty tasks.json');
+            } else {
+                console.log('📝 Using existing local tasks.json');
+            }
             process.exit(0);
         }
 
