@@ -113,6 +113,7 @@ a {
 .result-value {
   display: inline-block;
   padding: 0.125rem 0.5rem;
+  margin: 0.125rem 0;
   background: var(--success-bg);
   color: #166534;
   border-radius: 4px;
@@ -176,11 +177,11 @@ a {
   .container {
     padding: 1rem;
   }
-  
+
   .card {
     padding: 1.5rem;
   }
-  
+
   .input-grid {
     grid-template-columns: 1fr;
   }
@@ -188,8 +189,15 @@ a {
 
 /* Animations */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .fade-in {
@@ -214,6 +222,13 @@ a {
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.3;
+  }
 }
