@@ -50,6 +50,9 @@ export async function POST(request: NextRequest) {
             throw saveError;
         }
 
+        // TEMPORARILY DISABLED FOR TESTING - Allows repeated calculations
+        // TODO: Re-enable before production deployment
+        /*
         // Mark customer as calculated
         const { error: updateError } = await supabase
             .from('approved_customers')
@@ -59,6 +62,7 @@ export async function POST(request: NextRequest) {
         if (updateError) {
             throw updateError;
         }
+        */
 
         return NextResponse.json({
             success: true,

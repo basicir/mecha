@@ -184,6 +184,22 @@ export default function CalculatePage() {
                         </div>
                     )}
 
+                    {/* Hint section */}
+                    {task.hint && (
+                        <div style={{
+                            marginBottom: '1rem',
+                            padding: '1rem',
+                            background: '#fef3c7',
+                            color: '#92400e',
+                            borderRadius: '8px',
+                            borderLeft: '4px solid #f59e0b',
+                            fontSize: '0.875rem',
+                            lineHeight: '1.5'
+                        }}>
+                            <strong>💡 Hint:</strong> {task.hint}
+                        </div>
+                    )}
+
 
 
                     <div className="input-grid">

@@ -29,6 +29,7 @@ export interface TaskEquation {
 export interface TaskConfig {
     id: string;
     name: string;
+    hint?: string; // Optional hint text shown on calculate page
     inputVariables: TaskVariable[];
     outputVariables: TaskVariable[];
     equations: TaskEquation[];

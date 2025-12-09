@@ -402,6 +402,19 @@ export default function AdminPage() {
                         <input type="text" className="input" value={task.name} onChange={(e) => updateTask(task.id, 'name', e.target.value)} />
                     </div>
 
+                    {/* Hint */}
+                    <div style={{ marginBottom: '1.5rem' }}>
+                        <label className="input-label">💡 Hint (opcionális - borostyánsárgában jelenik meg)</label>
+                        <textarea
+                            className="input"
+                            rows={2}
+                            value={task.hint || ''}
+                            onChange={(e) => updateTask(task.id, 'hint', e.target.value)}
+                            placeholder="Pl: Ne felejtsd, hogy a másodpercet óra-re kell átváltani..."
+                            style={{ resize: 'vertical', fontFamily: 'inherit' }}
+                        />
+                    </div>
+
                     {/* Input Variables */}
                     <div style={{ marginBottom: '1.5rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
