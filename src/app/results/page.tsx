@@ -116,23 +116,6 @@ export default function ResultsPage() {
                             dangerouslySetInnerHTML={{ __html: renderShowingText(task, taskResult) }}
                         />
 
-                        {taskResult && Object.keys(taskResult.outputs).length > 0 && (
-                            <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
-                                <h3 style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.75rem', color: 'var(--text-muted)' }}>
-                                    Calculated Values:
-                                </h3>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
-                                    {Object.entries(taskResult.outputs).map(([key, value]) => (
-                                        <div key={key} style={{ fontSize: '0.875rem' }}>
-                                            <span style={{ color: 'var(--text-muted)' }}>{key}: </span>
-                                            <span className="result-value" style={{ fontWeight: '600' }}>
-                                                {formatResult(value)}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
 
                         {taskResult && (
                             <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
