@@ -131,21 +131,14 @@ export function parseExcelFormula(formula: string): string {
         result = result.replace(regex, `${mathjsFunc}(`);
     }
 
-    // Handle HATVÁNY/POWER differently - Excel uses POWER(base, exp), mathjs uses pow(base, exp)
-    // Already handled above, but ensure ^ operator works too
-
-    // Handle comparison operators (Excel uses same as mathjs)
-    // < > <= >= = <>
-    // Note: Excel = for equality, mathjs uses ==
-    // But in our case we're using mathjs evaluate which handles = as assignment
-    // For comparisons in HA/IF, we need to be careful
-
-    // Replace Excel equality = with == (but not assignment)
-    // This is tricky - we only want to replace = in comparison context
-    // For now, assume formulas are written correctly
-
     // Handle <> (not equal) → !=
     result = result.replace(/<>/g, '!=');
+
+    // Handle Excel = operator for equality in comparisons
+    // Replace single = with == but avoid replacing in string contexts
+    // Strategy: Replace = with == when it appears between expressions (not after operators)
+    // Look for patterns like: )=( or variable=value or number=number
+    result = result.replace(/([a-zA-Z0-9_)\]])=([a-zA-Z0-9_(])/g, '$1==$2');
 
     return result;
 }

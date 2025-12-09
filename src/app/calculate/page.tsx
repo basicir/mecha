@@ -12,6 +12,8 @@ export default function CalculatePage() {
     const [calculating, setCalculating] = useState(false);
     const [lastSaved, setLastSaved] = useState<Date | null>(null);
     const [error, setError] = useState('');
+    const [showConfirmation, setShowConfirmation] = useState(false);
+    const [decimalWarning, setDecimalWarning] = useState('');
     const router = useRouter();
 
     // Load customer ID and check access
@@ -91,6 +93,13 @@ export default function CalculatePage() {
     }, [saveInputs]);
 
     const handleInputChange = (taskId: string, variable: string, value: string) => {
+        // Check for decimal comma
+        if (value.includes(',')) {
+            setDecimalWarning('⚠️ FIGYELEM! Tizedes PONT-ot használj, NEM vesszőt! (pl: 3.14) - Dolgozatban is így!');
+            setTimeout(() => setDecimalWarning(''), 5000);
+            return;
+        }
+        setDecimalWarning('');
         const numValue = parseFloat(value) || 0;
         setInputs((prev) => ({
             ...prev,
@@ -106,6 +115,7 @@ export default function CalculatePage() {
 
         setCalculating(true);
         setError('');
+        setShowConfirmation(false);
 
         try {
             const res = await fetch('/api/calculate', {
@@ -174,22 +184,10 @@ export default function CalculatePage() {
                         </div>
                     )}
 
-                    {/* Show the task description */}
-                    {task.showingText && (
-                        <div style={{
-                            marginBottom: '1rem',
-                            padding: '1rem',
-                            background: 'rgba(255,255,255,0.02)',
-                            borderRadius: '8px',
-                            whiteSpace: 'pre-wrap',
-                            lineHeight: '1.6'
-                        }}>
-                            {task.showingText.replace(/\{\{[^}]+\}\}/g, '____')}
-                        </div>
-                    )}
+
 
                     <div className="input-grid">
-                        {task.inputVariables.map((variable) => (
+                        {[...task.inputVariables].reverse().map((variable) => (
                             <div key={variable.name} className="input-group">
                                 <label className="input-label" htmlFor={`${task.id}-${variable.name}`}>
                                     {variable.label} {variable.unit && `(${variable.unit})`}
@@ -209,19 +207,77 @@ export default function CalculatePage() {
                 </div>
             ))}
 
+            {decimalWarning && (
+                <div style={{
+                    marginBottom: '1rem',
+                    padding: '1rem',
+                    background: '#fef3c7',
+                    color: '#92400e',
+                    borderRadius: '8px',
+                    fontWeight: '600',
+                    textAlign: 'center'
+                }}>
+                    {decimalWarning}
+                </div>
+            )}
+
             {error && <div className="error-message">{error}</div>}
 
+            {showConfirmation && (
+                <div style={{
+                    position: 'fixed',
+                    inset: '0',
+                    background: 'rgba(0,0,0,0.8)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000
+                }}>
+                    <div style={{
+                        background: '#1f2937',
+                        padding: '2rem',
+                        borderRadius: '12px',
+                        maxWidth: '500px',
+                        margin: '1rem'
+                    }}>
+                        <h2 style={{ marginBottom: '1rem', color: '#ef4444' }}>⚠️ FIGYELEM!</h2>
+                        <p style={{ marginBottom: '1.5rem', lineHeight: '1.6' }}>
+                            Ez a művelet <strong>VISSZAVONHATATLAN</strong>!<br />
+                            Csak EGYSZER számolhatsz minden feladattal.<br />
+                            Biztosan folytatod?
+                        </p>
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                            <button
+                                onClick={() => setShowConfirmation(false)}
+                                className="btn"
+                                style={{ flex: 1, background: 'var(--border-color)' }}
+                            >
+                                Mégse
+                            </button>
+                            <button
+                                onClick={handleCalculate}
+                                className="btn btn-success"
+                                style={{ flex: 1 }}
+                                disabled={calculating}
+                            >
+                                {calculating ? 'Számol...' : 'Igen, számolok!'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <button
-                onClick={handleCalculate}
+                onClick={() => setShowConfirmation(true)}
                 className="btn btn-success"
                 style={{ width: '100%', padding: '1.25rem', fontSize: '1.125rem', marginTop: '1rem' }}
                 disabled={calculating}
             >
-                {calculating ? 'Calculating...' : '🧮 Calculate'}
+                🧮 Számolás indítása (CSAK 1x!)
             </button>
 
-            <p style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                ⚠️ You can only click Calculate once!
+            <p style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.875rem', color: '#ef4444', fontWeight: '600' }}>
+                ⚠️ FIGYELEM: Ez a művelet VISSZAVONHATATLAN! Csak EGYSZER számolhatsz!
             </p>
         </main>
     );
