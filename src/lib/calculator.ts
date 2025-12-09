@@ -109,6 +109,7 @@ math.import({
  *   =HA(E20<B23;B19+B20;B19) → excelIf(E20<B23, B19+B20, B19)
  *   =B12^2*PI()/4 → B12^2*PI_VALUE/4
  *   =RADIÁN(45) → toRadians(45)
+ *   =HA(x=5;0,5;1) → excelIf(x==5, 0.5, 1)  // with European decimal notation
  */
 export function parseExcelFormula(formula: string): string {
     let result = formula.trim();
@@ -118,26 +119,32 @@ export function parseExcelFormula(formula: string): string {
         result = result.substring(1);
     }
 
-    // Replace semicolons with commas (Excel uses ; as argument separator in some locales)
+    // Step 1: Convert European decimal notation (e.g., 0,5 → 0.5)
+    // Match pattern: digit followed by comma followed by digit (decimal separator)
+    // This must be done BEFORE replacing semicolons with commas
+    result = result.replace(/(\d),(\d)/g, '$1.$2');
+
+    // Step 2: Replace semicolons with commas (Excel uses ; as argument separator in some locales)
     result = result.replace(/;/g, ',');
 
-    // Replace PI() with PI_VALUE
+    // Step 3: Replace PI() with PI_VALUE
     result = result.replace(/PI\(\)/gi, 'PI_VALUE');
 
-    // Replace Hungarian/Excel functions with mathjs equivalents
+    // Step 4: Replace Hungarian/Excel functions with mathjs equivalents
     for (const [excelFunc, mathjsFunc] of Object.entries(EXCEL_FUNCTIONS)) {
         // Match function calls (word followed by parenthesis)
         const regex = new RegExp(`\\b${excelFunc}\\s*\\(`, 'gi');
         result = result.replace(regex, `${mathjsFunc}(`);
     }
 
-    // Handle <> (not equal) → !=
+    // Step 5: Handle <> (not equal) → !=
     result = result.replace(/<>/g, '!=');
 
-    // Handle Excel = operator for equality in comparisons
-    // Replace single = with == but avoid replacing in string contexts
-    // Strategy: Replace = with == when it appears between expressions (not after operators)
+    // Step 6: Handle Excel = operator for equality in comparisons
+    // Replace single = with == but avoid replacing operators like <=, >=, !=, ==
     // Look for patterns like: )=( or variable=value or number=number
+    // The pattern matches when = is preceded by: letter, digit, underscore, ), or ]
+    // and followed by: letter, digit, underscore, (, or [
     result = result.replace(/([a-zA-Z0-9_)\]])=([a-zA-Z0-9_(])/g, '$1==$2');
 
     return result;
@@ -215,10 +222,25 @@ export function testExcelFormulas(): void {
         { excel: '=RADIÁN(45)', expected: 'toRadians(45)' },
         { excel: '=SIN(RADIÁN(45))', expected: 'sin(toRadians(45))' },
         { excel: '=HATVÁNY(2;3)', expected: 'pow(2,3)' },
+        // European decimal notation
+        { excel: '=0,5*x1', expected: '0.5*x1' },
+        { excel: '=HA(x>0;0,5;1,5)', expected: 'excelIf(x>0,0.5,1.5)' },
+        // Nested HA with equality
+        { excel: '=HA(x2=(a+b);value1;value2)', expected: 'excelIf(x2==(a+b),value1,value2)' },
+        { excel: '=HA((SIN(RADIÁN(alfa))*F1)<F2;a+b;a)', expected: 'excelIf((sin(toRadians(alfa))*F1)<F2,a+b,a)' },
+        // Complex nested HA
+        { excel: '=HA((HA(x<5;a;b))=(a);result1;result2)', expected: 'excelIf((excelIf(x<5,a,b))==(a),result1,result2)' },
     ];
 
+    console.log('=== Testing Excel Formula Parsing ===');
     for (const test of testCases) {
         const result = parseExcelFormula(test.excel);
-        console.log(`${test.excel} → ${result} (expected: ${test.expected})`);
+        const passed = result === test.expected;
+        console.log(`${passed ? '✅' : '❌'} ${test.excel}`);
+        console.log(`   Result:   ${result}`);
+        if (!passed) {
+            console.log(`   Expected: ${test.expected}`);
+        }
     }
 }
+
