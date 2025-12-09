@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import type { TaskConfig, ConfigData, TaskVariable } from '@/types';
+import type { TaskConfig, ConfigData, TaskVariable, TaskEquation } from '@/types';
 
 // Function definitions with hints
 const FUNCTION_BUTTONS = [
@@ -18,21 +18,12 @@ const FUNCTION_BUTTONS = [
     { name: 'MAX', insert: 'MAX(;)', hint: 'MAX(szám1;szám2;...) - Maximum' },
 ];
 
-const BRACKET_COLORS = [
-    '#f97316', // orange
-    '#22c55e', // green
-    '#3b82f6', // blue
-    '#a855f7', // purple
-    '#ef4444', // red
-    '#eab308', // yellow
-];
+const BRACKET_COLORS = ['#f97316', '#22c55e', '#3b82f6', '#a855f7', '#ef4444', '#eab308'];
 
-// Highlight brackets with colors
 function highlightBrackets(formula: string): React.ReactNode[] {
     const result: React.ReactNode[] = [];
     let depth = 0;
     let i = 0;
-
     for (const char of formula) {
         if (char === '(') {
             const color = BRACKET_COLORS[depth % BRACKET_COLORS.length];
@@ -47,10 +38,90 @@ function highlightBrackets(formula: string): React.ReactNode[] {
         }
         i++;
     }
-
     return result;
 }
 
+// ShowingText editor with output variable insert buttons
+interface ShowingTextEditorProps {
+    value: string;
+    onChange: (value: string) => void;
+    outputVariables: string[]; // Output variable names from equations
+}
+
+function ShowingTextEditor({ value, onChange, outputVariables }: ShowingTextEditorProps) {
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    const insertAtCursor = (text: string) => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+
+        const start = textarea.selectionStart || 0;
+        const end = textarea.selectionEnd || 0;
+        const newValue = value.substring(0, start) + text + value.substring(end);
+
+        onChange(newValue);
+
+        requestAnimationFrame(() => {
+            const cursorPos = start + text.length;
+            textarea.setSelectionRange(cursorPos, cursorPos);
+            textarea.focus();
+        });
+    };
+
+    return (
+        <div>
+            <textarea
+                ref={textareaRef}
+                className="input"
+                rows={5}
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                style={{ resize: 'vertical', fontFamily: 'inherit' }}
+            />
+
+            {/* Output variable insert buttons */}
+            {outputVariables.length > 0 && (
+                <div style={{ marginTop: '0.5rem' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginRight: '0.5rem' }}>
+                        📤 Output beszúrása:
+                    </span>
+                    <div style={{ display: 'inline-flex', flexWrap: 'wrap', gap: '0.25rem' }}>
+                        {outputVariables.map((varName) => (
+                            <button
+                                key={varName}
+                                type="button"
+                                onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    insertAtCursor(`{{${varName}}}`);
+                                }}
+                                style={{
+                                    background: '#22c55e',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    padding: '0.25rem 0.5rem',
+                                    fontSize: '0.75rem',
+                                    cursor: 'pointer',
+                                    fontFamily: 'monospace',
+                                }}
+                            >
+                                {`{{${varName}}}`}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {outputVariables.length === 0 && (
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+                    💡 Adj hozzá equation-öket, hogy itt megjelenjenek az output változó gombok
+                </p>
+            )}
+        </div>
+    );
+}
+
+// Formula editor
 interface FormulaEditorProps {
     value: string;
     onChange: (value: string) => void;
@@ -62,7 +133,6 @@ function FormulaEditor({ value, onChange, variables, placeholder }: FormulaEdito
     const inputRef = useRef<HTMLInputElement>(null);
     const [hoveredFunc, setHoveredFunc] = useState<string | null>(null);
 
-    // Insert at cursor position without losing focus
     const insertAtCursor = (text: string) => {
         const input = inputRef.current;
         if (!input) return;
@@ -73,10 +143,8 @@ function FormulaEditor({ value, onChange, variables, placeholder }: FormulaEdito
 
         onChange(newValue);
 
-        // Set cursor position after inserted text
         requestAnimationFrame(() => {
             const cursorPos = start + text.length;
-            // If we inserted something with (), put cursor inside
             if (text.includes('()')) {
                 input.setSelectionRange(cursorPos - 1, cursorPos - 1);
             } else if (text.includes('(;)') || text.includes('(;;)')) {
@@ -90,22 +158,12 @@ function FormulaEditor({ value, onChange, variables, placeholder }: FormulaEdito
 
     return (
         <div>
-            {/* Formula preview with colored brackets */}
             {value && (
-                <div style={{
-                    fontFamily: 'monospace',
-                    fontSize: '0.875rem',
-                    padding: '0.5rem',
-                    background: 'rgba(0,0,0,0.3)',
-                    borderRadius: '6px',
-                    marginBottom: '0.5rem',
-                    overflowX: 'auto'
-                }}>
+                <div style={{ fontFamily: 'monospace', fontSize: '0.875rem', padding: '0.5rem', background: 'rgba(0,0,0,0.3)', borderRadius: '6px', marginBottom: '0.5rem', overflowX: 'auto' }}>
                     ={highlightBrackets(value)}
                 </div>
             )}
 
-            {/* Input field */}
             <input
                 ref={inputRef}
                 type="text"
@@ -116,7 +174,6 @@ function FormulaEditor({ value, onChange, variables, placeholder }: FormulaEdito
                 style={{ fontFamily: 'monospace' }}
             />
 
-            {/* Variable quick buttons */}
             {variables.length > 0 && (
                 <div style={{ marginTop: '0.5rem' }}>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginRight: '0.5rem' }}>Változók:</span>
@@ -125,20 +182,8 @@ function FormulaEditor({ value, onChange, variables, placeholder }: FormulaEdito
                             <button
                                 key={v.name}
                                 type="button"
-                                onMouseDown={(e) => {
-                                    e.preventDefault(); // Prevent focus loss
-                                    insertAtCursor(v.name);
-                                }}
-                                style={{
-                                    background: 'var(--primary)',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '4px',
-                                    padding: '0.25rem 0.5rem',
-                                    fontSize: '0.75rem',
-                                    cursor: 'pointer',
-                                    fontFamily: 'monospace',
-                                }}
+                                onMouseDown={(e) => { e.preventDefault(); insertAtCursor(v.name); }}
+                                style={{ background: 'var(--primary)', color: 'white', border: 'none', borderRadius: '4px', padding: '0.25rem 0.5rem', fontSize: '0.75rem', cursor: 'pointer', fontFamily: 'monospace' }}
                             >
                                 {v.name}
                             </button>
@@ -147,7 +192,6 @@ function FormulaEditor({ value, onChange, variables, placeholder }: FormulaEdito
                 </div>
             )}
 
-            {/* Function quick buttons */}
             <div style={{ marginTop: '0.5rem' }}>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginRight: '0.5rem' }}>Függvények:</span>
                 <div style={{ display: 'inline-flex', flexWrap: 'wrap', gap: '0.25rem' }}>
@@ -155,21 +199,10 @@ function FormulaEditor({ value, onChange, variables, placeholder }: FormulaEdito
                         <button
                             key={func.name}
                             type="button"
-                            onMouseDown={(e) => {
-                                e.preventDefault(); // Prevent focus loss
-                                insertAtCursor(func.insert);
-                            }}
+                            onMouseDown={(e) => { e.preventDefault(); insertAtCursor(func.insert); }}
                             onMouseEnter={() => setHoveredFunc(func.name)}
                             onMouseLeave={() => setHoveredFunc(null)}
-                            style={{
-                                background: 'var(--success)',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '4px',
-                                padding: '0.25rem 0.5rem',
-                                fontSize: '0.75rem',
-                                cursor: 'pointer',
-                            }}
+                            style={{ background: 'var(--success)', color: 'white', border: 'none', borderRadius: '4px', padding: '0.25rem 0.5rem', fontSize: '0.75rem', cursor: 'pointer' }}
                         >
                             {func.name}
                         </button>
@@ -177,16 +210,8 @@ function FormulaEditor({ value, onChange, variables, placeholder }: FormulaEdito
                 </div>
             </div>
 
-            {/* Hint display */}
             {hoveredFunc && (
-                <div style={{
-                    marginTop: '0.5rem',
-                    padding: '0.5rem',
-                    background: 'rgba(59, 130, 246, 0.2)',
-                    borderRadius: '6px',
-                    fontSize: '0.8rem',
-                    fontFamily: 'monospace',
-                }}>
+                <div style={{ marginTop: '0.5rem', padding: '0.5rem', background: 'rgba(59, 130, 246, 0.2)', borderRadius: '6px', fontSize: '0.8rem', fontFamily: 'monospace' }}>
                     💡 {FUNCTION_BUTTONS.find(f => f.name === hoveredFunc)?.hint}
                 </div>
             )}
@@ -201,9 +226,7 @@ export default function AdminPage() {
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState('');
 
-    useEffect(() => {
-        loadConfig();
-    }, []);
+    useEffect(() => { loadConfig(); }, []);
 
     const loadConfig = async () => {
         try {
@@ -219,11 +242,9 @@ export default function AdminPage() {
     const handleRefresh = async () => {
         setRefreshing(true);
         setMessage('');
-
         try {
             const res = await fetch('/api/admin/refresh', { method: 'POST' });
             const data = await res.json();
-
             if (res.ok) {
                 setMessage(`Refreshed! Found ${data.taskCount} tasks.`);
                 await loadConfig();
@@ -238,17 +259,14 @@ export default function AdminPage() {
 
     const handleSave = async () => {
         if (!config) return;
-
         setSaving(true);
         setMessage('');
-
         try {
             const res = await fetch('/api/admin/config', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(config),
             });
-
             if (res.ok) {
                 setMessage('Saved!');
             } else {
@@ -264,9 +282,7 @@ export default function AdminPage() {
         if (!config) return;
         setConfig({
             ...config,
-            tasks: config.tasks.map((task) =>
-                task.id === taskId ? { ...task, [field]: value } : task
-            ),
+            tasks: config.tasks.map((task) => task.id === taskId ? { ...task, [field]: value } : task),
         });
     };
 
@@ -276,10 +292,7 @@ export default function AdminPage() {
             ...config,
             tasks: config.tasks.map((task) => {
                 if (task.id !== taskId) return task;
-                return {
-                    ...task,
-                    inputVariables: [...task.inputVariables, { name: '', label: '', unit: '' }],
-                };
+                return { ...task, inputVariables: [...task.inputVariables, { name: '', label: '', unit: '' }] };
             }),
         });
     };
@@ -303,10 +316,7 @@ export default function AdminPage() {
             ...config,
             tasks: config.tasks.map((task) => {
                 if (task.id !== taskId) return task;
-                return {
-                    ...task,
-                    inputVariables: task.inputVariables.filter((_, i) => i !== varIndex),
-                };
+                return { ...task, inputVariables: task.inputVariables.filter((_, i) => i !== varIndex) };
             }),
         });
     };
@@ -317,10 +327,7 @@ export default function AdminPage() {
             ...config,
             tasks: config.tasks.map((task) => {
                 if (task.id !== taskId) return task;
-                return {
-                    ...task,
-                    equations: [...task.equations, { outputVariable: '', formula: '' }],
-                };
+                return { ...task, equations: [...task.equations, { outputVariable: '', formula: '' }] };
             }),
         });
     };
@@ -344,12 +351,14 @@ export default function AdminPage() {
             ...config,
             tasks: config.tasks.map((task) => {
                 if (task.id !== taskId) return task;
-                return {
-                    ...task,
-                    equations: task.equations.filter((_, i) => i !== eqIndex),
-                };
+                return { ...task, equations: task.equations.filter((_, i) => i !== eqIndex) };
             }),
         });
+    };
+
+    // Get output variable names from equations
+    const getOutputVariables = (equations: TaskEquation[]): string[] => {
+        return equations.map(eq => eq.outputVariable).filter(name => name.trim() !== '');
     };
 
     if (loading) {
@@ -385,11 +394,6 @@ export default function AdminPage() {
                         <input type="text" className="input" value={task.name} onChange={(e) => updateTask(task.id, 'name', e.target.value)} />
                     </div>
 
-                    <div style={{ marginBottom: '1.5rem' }}>
-                        <label className="input-label">Showing Text (use {'{{var}}'} for outputs)</label>
-                        <textarea className="input" rows={3} value={task.showingText} onChange={(e) => updateTask(task.id, 'showingText', e.target.value)} style={{ resize: 'vertical' }} />
-                    </div>
-
                     {/* Input Variables */}
                     <div style={{ marginBottom: '1.5rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
@@ -406,15 +410,15 @@ export default function AdminPage() {
                         </div>
                     </div>
 
-                    {/* Equations with Formula Editor */}
-                    <div>
+                    {/* Equations */}
+                    <div style={{ marginBottom: '1.5rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                             <h3 style={{ fontSize: '1rem', fontWeight: '600' }}>➗ Equations ({task.equations.length})</h3>
                             <button onClick={() => addEquation(task.id)} className="btn" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'var(--success)' }}>+ Add</button>
                         </div>
 
                         {task.equations.map((eq, eqIndex) => (
-                            <div key={eqIndex} style={{ marginBottom: '1.5rem', padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>
+                            <div key={eqIndex} style={{ marginBottom: '1rem', padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>
                                 <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '0.75rem' }}>
                                     <input type="text" className="input" style={{ width: '120px', fontFamily: 'monospace' }} value={eq.outputVariable} onChange={(e) => updateEquation(task.id, eqIndex, 'outputVariable', e.target.value)} placeholder="output" />
                                     <span style={{ fontSize: '1.25rem' }}>=</span>
@@ -428,6 +432,16 @@ export default function AdminPage() {
                                 />
                             </div>
                         ))}
+                    </div>
+
+                    {/* Showing Text with Output Variable Insert */}
+                    <div>
+                        <label className="input-label">📝 Showing Text</label>
+                        <ShowingTextEditor
+                            value={task.showingText}
+                            onChange={(value) => updateTask(task.id, 'showingText', value)}
+                            outputVariables={getOutputVariables(task.equations)}
+                        />
                     </div>
                 </div>
             ))}
