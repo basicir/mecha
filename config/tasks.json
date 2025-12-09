@@ -38,9 +38,7 @@
             ],
             "showingText": "l0= {{l0}} mm \na={{a}} mm",
             "outputPlaceholders": [],
-            "images": [
-                "/images/img_2.png"
-            ]
+            "images": []
         },
         {
             "id": "page_files 3-task-2",
