@@ -44,18 +44,23 @@ export default function ResultsPage() {
         return value.toFixed(4);
     };
 
+    // Replace ALL {{variable}} patterns with calculated values
     const renderShowingText = (task: TaskConfig, taskResult?: CalculationResult) => {
         if (!taskResult) return task.showingText;
 
         let text = task.showingText;
-        for (const placeholder of task.outputPlaceholders) {
-            const value = taskResult.outputs[placeholder.variable];
-            const formattedValue = formatResult(value);
-            text = text.replace(
-                `{{${placeholder.variable}}}`,
-                `<span class="result-value">${formattedValue}</span>`
-            );
-        }
+
+        // Find all {{variable}} patterns using regex
+        const placeholderRegex = /\{\{(\w+)\}\}/g;
+
+        text = text.replace(placeholderRegex, (match, varName) => {
+            const value = taskResult.outputs[varName];
+            if (value !== undefined && value !== null) {
+                return `<span class="result-value">${formatResult(value)}</span>`;
+            }
+            return match; // Keep original if not found
+        });
+
         return text;
     };
 
@@ -91,27 +96,46 @@ export default function ResultsPage() {
                             {index + 1}. {task.name}
                         </h2>
 
-                        {task.images.length > 0 && (
+                        {task.images && task.images.length > 0 && (
                             <div style={{ marginBottom: '1rem' }}>
                                 {task.images.map((img) => (
                                     <img
                                         key={img}
-                                        src={`/examples/page_files 3/${img}`}
+                                        src={img.startsWith('/') ? img : `/examples/${img}`}
                                         alt={task.name}
                                         className="task-image"
                                         style={{ maxWidth: '400px' }}
+                                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                                     />
                                 ))}
                             </div>
                         )}
 
                         <div
-                            style={{ fontSize: '1rem', lineHeight: '1.8' }}
+                            style={{ fontSize: '1rem', lineHeight: '1.8', whiteSpace: 'pre-wrap' }}
                             dangerouslySetInnerHTML={{ __html: renderShowingText(task, taskResult) }}
                         />
 
-                        {taskResult && (
+                        {taskResult && Object.keys(taskResult.outputs).length > 0 && (
                             <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
+                                <h3 style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.75rem', color: 'var(--text-muted)' }}>
+                                    Calculated Values:
+                                </h3>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+                                    {Object.entries(taskResult.outputs).map(([key, value]) => (
+                                        <div key={key} style={{ fontSize: '0.875rem' }}>
+                                            <span style={{ color: 'var(--text-muted)' }}>{key}: </span>
+                                            <span className="result-value" style={{ fontWeight: '600' }}>
+                                                {formatResult(value)}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {taskResult && (
+                            <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
                                 <h3 style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.75rem', color: 'var(--text-muted)' }}>
                                     Input Values:
                                 </h3>
@@ -120,7 +144,7 @@ export default function ResultsPage() {
                                         <div key={variable.name} style={{ fontSize: '0.875rem' }}>
                                             <span style={{ color: 'var(--text-muted)' }}>{variable.label}: </span>
                                             <span style={{ fontWeight: '500' }}>
-                                                {taskResult.inputs[variable.name] || 0} {variable.unit}
+                                                {taskResult.inputs[variable.name] || 0}
                                             </span>
                                         </div>
                                     ))}

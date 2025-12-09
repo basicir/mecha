@@ -159,17 +159,32 @@ export default function CalculatePage() {
                         {index + 1}. {task.name}
                     </h2>
 
-                    {task.images.length > 0 && (
+                    {task.images && task.images.length > 0 && (
                         <div style={{ marginBottom: '1rem' }}>
                             {task.images.map((img) => (
                                 <img
                                     key={img}
-                                    src={`/examples/page_files 3/${img}`}
+                                    src={img.startsWith('/') ? img : `/examples/${img}`}
                                     alt={task.name}
                                     className="task-image"
                                     style={{ maxWidth: '400px' }}
+                                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                                 />
                             ))}
+                        </div>
+                    )}
+
+                    {/* Show the task description */}
+                    {task.showingText && (
+                        <div style={{
+                            marginBottom: '1rem',
+                            padding: '1rem',
+                            background: 'rgba(255,255,255,0.02)',
+                            borderRadius: '8px',
+                            whiteSpace: 'pre-wrap',
+                            lineHeight: '1.6'
+                        }}>
+                            {task.showingText.replace(/\{\{[^}]+\}\}/g, '____')}
                         </div>
                     )}
 
