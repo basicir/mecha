@@ -6,14 +6,16 @@ import type { TaskConfig } from '@/types';
 
 export default function CalculatePage() {
     const [tasks, setTasks] = useState<TaskConfig[]>([]);
-    const [inputs, setInputs] = useState<Record<string, Record<string, number>>>({});
+    // Store inputs as strings to preserve leading zeros (e.g., "0.123")
+    const [inputs, setInputs] = useState<Record<string, Record<string, string>>>({});
+    // Track which fields have validation errors
+    const [inputErrors, setInputErrors] = useState<Record<string, Record<string, string>>>({});
     const [customerId, setCustomerId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [calculating, setCalculating] = useState(false);
     const [lastSaved, setLastSaved] = useState<Date | null>(null);
     const [error, setError] = useState('');
     const [showConfirmation, setShowConfirmation] = useState(false);
-    const [decimalWarning, setDecimalWarning] = useState('');
     const router = useRouter();
 
     // Load customer ID and check access
@@ -68,9 +70,35 @@ export default function CalculatePage() {
         }
     };
 
-    // Autosave every 2 seconds
+
+    // Check if any input has validation errors
+    const hasValidationErrors = useCallback(() => {
+        for (const taskId in inputErrors) {
+            for (const variable in inputErrors[taskId]) {
+                if (inputErrors[taskId][variable]) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }, [inputErrors]);
+
+    // Convert string inputs to numeric format for saving/calculating
+    const getNumericInputs = useCallback(() => {
+        const numericInputs: Record<string, Record<string, number>> = {};
+        for (const taskId in inputs) {
+            numericInputs[taskId] = {};
+            for (const variable in inputs[taskId]) {
+                const value = inputs[taskId][variable];
+                numericInputs[taskId][variable] = value === '' ? 0 : parseFloat(value) || 0;
+            }
+        }
+        return numericInputs;
+    }, [inputs]);
+
+    // Autosave every 2 seconds (only if no validation errors)
     const saveInputs = useCallback(async () => {
-        if (!customerId || Object.keys(inputs).length === 0) return;
+        if (!customerId || Object.keys(inputs).length === 0 || hasValidationErrors()) return;
 
         try {
             await fetch('/api/save-inputs', {
@@ -78,40 +106,139 @@ export default function CalculatePage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     customerId,
-                    taskInputs: inputs,
+                    taskInputs: getNumericInputs(),
                 }),
             });
             setLastSaved(new Date());
         } catch (err) {
             console.error('Autosave failed:', err);
         }
-    }, [customerId, inputs]);
+    }, [customerId, inputs, hasValidationErrors, getNumericInputs]);
 
     useEffect(() => {
         const interval = setInterval(saveInputs, 2000);
         return () => clearInterval(interval);
     }, [saveInputs]);
 
-    const handleInputChange = (taskId: string, variable: string, value: string) => {
-        // Check for decimal comma
+    // Validate input value - only allow digits and one decimal point
+    const validateInputValue = (value: string): { isValid: boolean; error: string } => {
+        if (value === '' || value === '-') {
+            return { isValid: true, error: '' };
+        }
+
+        // Check for comma (European decimal separator)
         if (value.includes(',')) {
-            setDecimalWarning('⚠️ FIGYELEM! Tizedes PONT-ot használj, NEM vesszőt! (pl: 3.14) - Dolgozatban is így!');
-            setTimeout(() => setDecimalWarning(''), 5000);
+            return {
+                isValid: false,
+                error: '⚠️ Tizedes PONT-ot használj, NEM vesszőt! (Dolgozatban is pont kell!)'
+            };
+        }
+
+        // Check for invalid characters (letters or other symbols)
+        // Allow: digits, dot, minus sign at start
+        const validPattern = /^-?\d*\.?\d*$/;
+        if (!validPattern.test(value)) {
+            return {
+                isValid: false,
+                error: '⚠️ Csak számokat és tizedespontot használhatsz!'
+            };
+        }
+
+        return { isValid: true, error: '' };
+    };
+
+    // Handle keydown to prevent typing invalid characters
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        // Allow: backspace, delete, tab, escape, enter, arrow keys
+        const allowedKeys = ['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'];
+        if (allowedKeys.includes(e.key)) {
             return;
         }
-        setDecimalWarning('');
-        const numValue = parseFloat(value) || 0;
+
+        // Allow Ctrl/Cmd+A, Ctrl/Cmd+C, Ctrl/Cmd+V, Ctrl/Cmd+X
+        if ((e.ctrlKey || e.metaKey) && ['a', 'c', 'v', 'x'].includes(e.key.toLowerCase())) {
+            return;
+        }
+
+        // Block comma and letters - only allow digits, dot, and minus
+        const allowedChars = /^[\d.\-]$/;
+        if (!allowedChars.test(e.key)) {
+            e.preventDefault();
+
+            // Show specific warning for comma
+            if (e.key === ',') {
+                const taskId = (e.target as HTMLInputElement).dataset.taskid || '';
+                const variable = (e.target as HTMLInputElement).dataset.variable || '';
+                setInputErrors((prev) => ({
+                    ...prev,
+                    [taskId]: {
+                        ...prev[taskId],
+                        [variable]: '⚠️ Tizedes PONT-ot használj, NEM vesszőt! (Dolgozatban is pont kell!)',
+                    },
+                }));
+                // Clear warning after 4 seconds
+                setTimeout(() => {
+                    setInputErrors((prev) => ({
+                        ...prev,
+                        [taskId]: {
+                            ...prev[taskId],
+                            [variable]: '',
+                        },
+                    }));
+                }, 4000);
+            }
+        }
+    };
+
+    const handleInputChange = (taskId: string, variable: string, value: string) => {
+        // Validate the input value
+        const validation = validateInputValue(value);
+
+        // Update error state
+        setInputErrors((prev) => ({
+            ...prev,
+            [taskId]: {
+                ...prev[taskId],
+                [variable]: validation.error,
+            },
+        }));
+
+        // Always update the input (so user can see what they typed and fix it)
         setInputs((prev) => ({
             ...prev,
             [taskId]: {
                 ...prev[taskId],
-                [variable]: numValue,
+                [variable]: value,
             },
         }));
     };
 
+    const handleBlur = (e: React.FocusEvent<HTMLInputElement>, taskId: string, variable: string) => {
+        const value = e.target.value;
+        const validation = validateInputValue(value);
+
+        // If there's a validation error (comma or invalid chars), prevent blur
+        if (!validation.isValid) {
+            e.preventDefault();
+            e.target.focus();
+            setInputErrors((prev) => ({
+                ...prev,
+                [taskId]: {
+                    ...prev[taskId],
+                    [variable]: validation.error,
+                },
+            }));
+        }
+    };
+
     const handleCalculate = async () => {
         if (!customerId) return;
+
+        // Don't allow calculation if there are validation errors
+        if (hasValidationErrors()) {
+            setError('Javítsd ki a hibás mezőket a számítás előtt!');
+            return;
+        }
 
         setCalculating(true);
         setError('');
@@ -123,7 +250,7 @@ export default function CalculatePage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     customerId,
-                    taskInputs: inputs,
+                    taskInputs: getNumericInputs(),
                 }),
             });
 
@@ -210,33 +337,29 @@ export default function CalculatePage() {
                                     {variable.label} {variable.unit && `(${variable.unit})`}
                                 </label>
                                 <input
-                                    type="number"
+                                    type="text"
+                                    inputMode="decimal"
                                     id={`${task.id}-${variable.name}`}
-                                    className="input"
-                                    step="any"
+                                    className={`input ${inputErrors[task.id]?.[variable.name] ? 'input-error' : ''}`}
                                     placeholder="0"
                                     value={inputs[task.id]?.[variable.name] ?? ''}
+                                    data-taskid={task.id}
+                                    data-variable={variable.name}
+                                    onKeyDown={handleKeyDown}
                                     onChange={(e) => handleInputChange(task.id, variable.name, e.target.value)}
+                                    onBlur={(e) => handleBlur(e, task.id, variable.name)}
                                 />
+                                {inputErrors[task.id]?.[variable.name] && (
+                                    <span className="input-warning">
+                                        {inputErrors[task.id][variable.name]}
+                                    </span>
+                                )}
                             </div>
                         ))}
                     </div>
                 </div>
             ))}
 
-            {decimalWarning && (
-                <div style={{
-                    marginBottom: '1rem',
-                    padding: '1rem',
-                    background: '#fef3c7',
-                    color: '#92400e',
-                    borderRadius: '8px',
-                    fontWeight: '600',
-                    textAlign: 'center'
-                }}>
-                    {decimalWarning}
-                </div>
-            )}
 
             {error && <div className="error-message">{error}</div>}
 

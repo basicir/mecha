@@ -109,6 +109,37 @@ a {
   color: var(--text-muted);
 }
 
+/* Hide number input spinners */
+.input::-webkit-outer-spin-button,
+.input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.input[type=number] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* Input error state for invalid values */
+.input.input-error {
+  border-color: var(--error);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.input.input-error:focus {
+  border-color: var(--error);
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.15);
+}
+
+/* Input warning message */
+.input-warning {
+  font-size: 0.75rem;
+  color: #f59e0b;
+  margin-top: 0.25rem;
+  font-weight: 500;
+}
+
 /* Result Highlighting */
 .result-value {
   display: inline-block;
