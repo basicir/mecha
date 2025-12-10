@@ -83,6 +83,31 @@ export default function CalculatePage() {
         return false;
     }, [inputErrors]);
 
+    // Check if all required inputs are filled
+    const getMissingInputs = useCallback(() => {
+        const missing: { taskName: string; variableLabel: string }[] = [];
+
+        for (const task of tasks) {
+            for (const variable of task.inputVariables) {
+                const value = inputs[task.id]?.[variable.name];
+                // Check if value is empty or undefined
+                if (value === undefined || value === '' || value === null) {
+                    missing.push({
+                        taskName: task.name,
+                        variableLabel: variable.label,
+                    });
+                }
+            }
+        }
+
+        return missing;
+    }, [tasks, inputs]);
+
+    // Check if all inputs are filled (for button enable/disable)
+    const allInputsFilled = useCallback(() => {
+        return getMissingInputs().length === 0;
+    }, [getMissingInputs]);
+
     // Convert string inputs to numeric format for saving/calculating
     const getNumericInputs = useCallback(() => {
         const numericInputs: Record<string, Record<string, number>> = {};
@@ -237,6 +262,15 @@ export default function CalculatePage() {
         // Don't allow calculation if there are validation errors
         if (hasValidationErrors()) {
             setError('Javítsd ki a hibás mezőket a számítás előtt!');
+            return;
+        }
+
+        // Don't allow calculation if not all inputs are filled
+        const missing = getMissingInputs();
+        if (missing.length > 0) {
+            const missingList = missing.slice(0, 5).map(m => `${m.taskName}: ${m.variableLabel}`).join(', ');
+            const extraCount = missing.length > 5 ? ` (+${missing.length - 5} további)` : '';
+            setError(`Hiányzó értékek: ${missingList}${extraCount}`);
             return;
         }
 
@@ -411,9 +445,11 @@ export default function CalculatePage() {
                 onClick={() => setShowConfirmation(true)}
                 className="btn btn-success"
                 style={{ width: '100%', padding: '1.25rem', fontSize: '1.125rem', marginTop: '1rem' }}
-                disabled={calculating}
+                disabled={calculating || !allInputsFilled() || hasValidationErrors()}
             >
-                🧮 Számolás indítása (CSAK 1x!)
+                {!allInputsFilled()
+                    ? `⚠️ Hiányzik ${getMissingInputs().length} érték`
+                    : '🧮 Számolás indítása (CSAK 1x!)'}
             </button>
 
             <p style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.875rem', color: '#ef4444', fontWeight: '600' }}>
