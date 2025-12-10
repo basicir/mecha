@@ -215,7 +215,7 @@ export default function CalculatePage() {
                                     className="input"
                                     step="any"
                                     placeholder="0"
-                                    value={inputs[task.id]?.[variable.name] || ''}
+                                    value={inputs[task.id]?.[variable.name] ?? ''}
                                     onChange={(e) => handleInputChange(task.id, variable.name, e.target.value)}
                                 />
                             </div>
