@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "npx tsx scripts/syncFromSupabase.ts",
+    "prebuild": "npx tsx scripts/syncFromSupabase.ts && npx tsx scripts/setupAdminPassword.ts",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
