@@ -62,7 +62,19 @@ export default function CalculatePage() {
             if (res.ok) {
                 const data = await res.json();
                 if (data.taskInputs) {
-                    setInputs(data.taskInputs);
+                    // Convert numeric values from Supabase to strings for display
+                    const stringInputs: Record<string, Record<string, string>> = {};
+                    for (const taskId in data.taskInputs) {
+                        stringInputs[taskId] = {};
+                        for (const variable in data.taskInputs[taskId]) {
+                            const value = data.taskInputs[taskId][variable];
+                            // Convert to string, preserving 0 as "0" not ""
+                            stringInputs[taskId][variable] = value !== null && value !== undefined
+                                ? String(value)
+                                : '';
+                        }
+                    }
+                    setInputs(stringInputs);
                 }
             }
         } catch (err) {
@@ -278,27 +290,67 @@ export default function CalculatePage() {
         setError('');
         setShowConfirmation(false);
 
+        // Get the numeric inputs we'll use for both save and calculate
+        const numericInputs = getNumericInputs();
+
         try {
+            // STEP 1: Double-check that user hasn't already calculated (race condition prevention)
+            const checkRes = await fetch('/api/validate-id', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ customerId }),
+            });
+            const checkData = await checkRes.json();
+
+            if (checkData.hasCalculated) {
+                setError('Már egyszer számoltál! Az eredményeid megtekinthetők.');
+                router.push('/results');
+                return;
+            }
+
+            // STEP 2: Save inputs BEFORE calculation to ensure latest values are persisted
+            const saveRes = await fetch('/api/save-inputs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    customerId,
+                    taskInputs: numericInputs,
+                }),
+            });
+
+            if (!saveRes.ok) {
+                console.error('Pre-calculation save failed');
+                // Continue with calculation anyway - the calculate endpoint will also save
+            }
+
+            // STEP 3: Perform calculation with the SAME values we just saved
             const res = await fetch('/api/calculate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     customerId,
-                    taskInputs: getNumericInputs(),
+                    taskInputs: numericInputs,
                 }),
             });
 
             const data = await res.json();
 
             if (!res.ok) {
-                setError(data.error || 'Calculation failed');
+                if (res.status === 403) {
+                    // Already calculated
+                    setError('Már egyszer számoltál! Az eredményeid megtekinthetők.');
+                    router.push('/results');
+                    return;
+                }
+                setError(data.error || 'Számítási hiba. Próbáld újra.');
                 return;
             }
 
-            // Redirect to results
+            // Success - redirect to results
             router.push('/results');
         } catch (err) {
-            setError('Connection error. Please try again.');
+            console.error('Calculation error:', err);
+            setError('Kapcsolódási hiba. Ellenőrizd az internet kapcsolatot és próbáld újra.');
         } finally {
             setCalculating(false);
         }
@@ -434,7 +486,7 @@ export default function CalculatePage() {
                                 style={{ flex: 1 }}
                                 disabled={calculating}
                             >
-                                {calculating ? 'Számol...' : 'Igen, számolok!'}
+                                {calculating ? 'Mentés és számítás...' : 'Igen, számolok!'}
                             </button>
                         </div>
                     </div>

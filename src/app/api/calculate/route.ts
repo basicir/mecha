@@ -50,19 +50,16 @@ export async function POST(request: NextRequest) {
             throw saveError;
         }
 
-        // TEMPORARILY DISABLED FOR TESTING - Allows repeated calculations
-        // TODO: Re-enable before production deployment
-        /*
-        // Mark customer as calculated
+        // Mark customer as calculated (IMPORTANT: prevents multiple calculations)
         const { error: updateError } = await supabase
             .from('approved_customers')
             .update({ has_calculated: true })
             .eq('id', customerId);
 
         if (updateError) {
-            throw updateError;
+            console.error('Failed to mark customer as calculated:', updateError);
+            // Don't throw - the calculation succeeded, user should still see results
         }
-        */
 
         return NextResponse.json({
             success: true,
